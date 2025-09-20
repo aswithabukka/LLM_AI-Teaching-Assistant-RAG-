@@ -121,8 +121,8 @@ class RAGPipeline:
             query_embedding = self.embedding_service.get_embedding(query)
             
             if query_embedding and self._ensure_vector_store():
-                # Query the vector store
-                filter_dict = {"metadata": {"course_id": course_id}}
+                # Query the vector store with proper ChromaDB filter format
+                filter_dict = {"course_id": {"$eq": course_id}}
                 results = self.vector_store.query_vectors(
                     query_vector=query_embedding,
                     top_k=top_k,
