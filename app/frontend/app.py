@@ -14,7 +14,7 @@ st.set_page_config(
 )
 
 # API URL
-API_URL = "http://127.0.0.1:25000/api"
+API_URL = "http://127.0.0.1:25000"
 
 
 # Authentication functions
@@ -31,36 +31,36 @@ def login(email: str, password: str) -> Optional[Dict[str, Any]]:
     """
     try:
         # Print the URL being used for troubleshooting
-        login_url = f"{API_URL}/auth/token"
-        print(f"Attempting login at: {login_url}")
+        login_url = f"{API_URL}/api/auth/token"
+        st.write(f"🔍 Attempting login at: {login_url}")
+        st.write(f"📧 Email: {email}")
         
         # Set up request with proper headers and data
         response = requests.post(
             login_url,
             # Important: Don't set the Content-Type header manually with requests.post when using form data
             # Let the requests library handle the encoding and headers
-            data={"username": email, "password": password}
+            data={"username": email, "password": password},
+            timeout=10
         )
         
         # Debug response
-        print(f"Login response status: {response.status_code}")
+        st.write(f"📡 Response status: {response.status_code}")
+        st.write(f"📄 Response text: {response.text[:200]}...")
         
         if response.status_code == 200:
             data = response.json()
-            print(f"Login successful")
+            st.success("✅ Login successful!")
             return data
         else:
             try:
                 error_detail = response.json().get('detail', 'Unknown error')
-                print(f"Login failed: {error_detail}")
-                st.error(f"Login failed: {error_detail}")
+                st.error(f"❌ Login failed: {error_detail}")
             except:
-                print(f"Login failed: {response.text}")
-                st.error(f"Login failed with status code: {response.status_code}")
+                st.error(f"❌ Login failed with status code: {response.status_code}")
             return None
     except Exception as e:
-        print(f"Error during login: {e}")
-        st.error(f"Error during login: {e}")
+        st.error(f"💥 Error during login: {e}")
         return None
 
 
@@ -77,7 +77,7 @@ def register(email: str, password: str) -> bool:
     """
     try:
         response = requests.post(
-            f"{API_URL}/auth/register",
+            f"{API_URL}/api/auth/register",
             json={"email": email, "password": password},
         )
         
@@ -103,7 +103,7 @@ def get_user_info(token: str) -> Optional[Dict[str, Any]]:
     """
     try:
         response = requests.get(
-            f"{API_URL}/auth/me",
+            f"{API_URL}/api/auth/me",
             headers={"Authorization": f"Bearer {token}"},
         )
         
@@ -129,7 +129,7 @@ def get_courses(token: str) -> List[Dict[str, Any]]:
     """
     try:
         response = requests.get(
-            f"{API_URL}/courses/",
+            f"{API_URL}/api/courses/",
             headers={"Authorization": f"Bearer {token}"},
         )
         
@@ -157,7 +157,7 @@ def create_course(token: str, title: str, description: str) -> Optional[Dict[str
     """
     try:
         response = requests.post(
-            f"{API_URL}/courses/",
+            f"{API_URL}/api/courses/",
             headers={"Authorization": f"Bearer {token}"},
             json={"title": title, "description": description},
         )
@@ -186,7 +186,7 @@ def get_document_status(token: str, document_id: int) -> Dict[str, Any]:
     """
     try:
         response = requests.get(
-            f"{API_URL}/documents/{document_id}",
+            f"{API_URL}/api/documents/{document_id}",
             headers={"Authorization": f"Bearer {token}"},
         )
         
@@ -213,7 +213,7 @@ def cancel_document_processing(token: str, document_id: int) -> bool:
     """
     try:
         response = requests.delete(
-            f"{API_URL}/documents/{document_id}/cancel",
+            f"{API_URL}/api/documents/{document_id}/cancel",
             headers={"Authorization": f"Bearer {token}"},
         )
         
@@ -240,7 +240,7 @@ def get_documents(token: str, course_id: int) -> List[Dict[str, Any]]:
     """
     try:
         response = requests.get(
-            f"{API_URL}/documents/course/{course_id}",
+            f"{API_URL}/api/documents/course/{course_id}",
             headers={"Authorization": f"Bearer {token}"},
         )
         
@@ -271,7 +271,7 @@ def upload_document(token: str, course_id: int, file) -> Optional[Dict[str, Any]
         data = {"course_id": course_id}
         
         response = requests.post(
-            f"{API_URL}/documents/upload",
+            f"{API_URL}/api/documents/upload",
             headers={"Authorization": f"Bearer {token}"},
             files=files,
             data=data,
@@ -309,7 +309,7 @@ def ask_question(token: str, question: str, course_id: int, chat_session_id: Opt
         }
         
         response = requests.post(
-            f"{API_URL}/questions/ask",
+            f"{API_URL}/api/questions/ask",
             headers={"Authorization": f"Bearer {token}"},
             json=data,
         )
@@ -336,7 +336,7 @@ def get_chat_sessions(token: str) -> List[Dict[str, Any]]:
     """
     try:
         response = requests.get(
-            f"{API_URL}/questions/chat-sessions",
+            f"{API_URL}/api/questions/chat-sessions",
             headers={"Authorization": f"Bearer {token}"},
         )
         
@@ -363,7 +363,7 @@ def get_chat_messages(token: str, chat_session_id: int) -> List[Dict[str, Any]]:
     """
     try:
         response = requests.get(
-            f"{API_URL}/questions/chat-sessions/{chat_session_id}",
+            f"{API_URL}/api/questions/chat-sessions/{chat_session_id}",
             headers={"Authorization": f"Bearer {token}"},
         )
         
