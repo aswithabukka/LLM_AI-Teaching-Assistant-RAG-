@@ -14,7 +14,7 @@ st.set_page_config(
 )
 
 # API URL
-API_URL = "http://127.0.0.1:25000"
+API_URL = "http://127.0.0.1:8000"
 
 
 # Authentication functions

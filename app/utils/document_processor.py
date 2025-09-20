@@ -52,24 +52,27 @@ class DocumentProcessor:
             bool: True if processing was successful, False otherwise.
         """
         try:
-            if self.use_ultra_fast_processing:
-                import os
-                file_size = os.path.getsize(self.file_path) if os.path.exists(self.file_path) else 0
-                print(f"🚀 ULTRA-FAST processing enabled for {file_size/1024:.1f}KB {self.file_type.upper()} file")
+            print(f"🔍 DocumentProcessor: Processing {self.file_type} file at {self.file_path}")
             
             if self.file_type == "pdf":
-                return self._process_pdf()
+                print(f"📄 Processing PDF...")
+                return self.process_pdf()
             elif self.file_type == "docx":
+                print(f"📄 Processing DOCX...")
                 return self._process_docx()
             elif self.file_type == "pptx":
+                print(f"📄 Processing PPTX...")
                 return self._process_pptx()
+            elif self.file_type in ["txt", "md"]:
+                print(f"📄 Processing text file...")
+                return self._process_text()
             else:
-                print(f"Unsupported file type: {self.file_type}")
+                print(f"❌ Unsupported file type: {self.file_type}")
                 return False
         except Exception as e:
             import traceback
-            print(f"Error processing document type {self.file_type}: {e}")
-            print(f"Document processing stack trace: {traceback.format_exc()}")
+            print(f"❌ Error processing document: {e}")
+            print(f"❌ DocumentProcessor error details: {traceback.format_exc()}")
             return False
     
     def process_pdf(self) -> bool:
@@ -139,7 +142,7 @@ class DocumentProcessor:
                         
                         # Add to pages collection
                         self.pages.append({
-                            "page_num": page_num + 1,
+                            "page_number": page_num + 1,
                             "content": text
                         })
                 return True
@@ -183,65 +186,47 @@ class DocumentProcessor:
             bool: True if processing was successful, False otherwise.
         """
         try:
-            import os
+            print(f"📄 Starting DOCX processing...")
+            from docx import Document as DocxDocument
             
-            # Ultra-fast path for very small DOCX files when flag is set
-            if self.use_ultra_fast_processing:
-                file_size = os.path.getsize(self.file_path) if os.path.exists(self.file_path) else 0
-                print(f"ULTRA-FAST DOCX processing for {file_size/1024:.1f}KB file - minimal operations")
-            
-            # Simple implementation for DOCX processing
-            import docx
-            
-            # Try to import docx, if not available, provide helpful error
-            try:
-                doc = docx.Document(self.file_path)
-            except ImportError:
-                print("python-docx not installed. Install with: pip install python-docx")
-                return False
-            
-            # Extract text from paragraphs and tables
-            text_elements = []
+            print(f"📖 Loading DOCX document...")
+            doc = DocxDocument(self.file_path)
+            full_text = []
             
             # Extract text from paragraphs
-            for para in doc.paragraphs:
-                if para.text.strip():
-                    text_elements.append(clean_extra_whitespace(para.text))
+            print(f"📝 Extracting paragraphs...")
+            for paragraph in doc.paragraphs:
+                if paragraph.text.strip():
+                    full_text.append(paragraph.text.strip())
             
             # Extract text from tables
+            print(f"📊 Extracting tables...")
             for table in doc.tables:
-                table_text = []
                 for row in table.rows:
                     row_text = []
                     for cell in row.cells:
                         if cell.text.strip():
-                            row_text.append(clean_extra_whitespace(cell.text))
+                            row_text.append(cell.text.strip())
                     if row_text:
-                        table_text.append(" | ".join(row_text))
-                if table_text:
-                    text_elements.append("\n".join(table_text))
+                        full_text.append(" | ".join(row_text))
             
-            self.text_content = "\n\n".join(text_elements)
+            self.text_content = "\n".join(full_text)
+            self.page_count = 1  # DOCX doesn't have explicit pages, so we use 1
+            self.pages = [{"page_number": 1, "content": self.text_content}]
             
-            # For DOCX, we don't have page numbers, so we create a single "page"
-            self.pages.append({
-                "page_num": 1,
-                "content": self.text_content
-            })
-            self.page_count = 1
-            
+            print(f"✅ DOCX processing complete. Extracted {len(self.text_content)} characters")
             return True
         except ImportError as e:
-            print(f"Missing DOCX processing dependency: {e}")
+            print(f"❌ Missing DOCX processing dependency: {e}")
             print("Please install required dependency: pip install python-docx")
             return False
         except FileNotFoundError:
-            print(f"DOCX file not found or not accessible: {self.file_path}")
+            print(f"❌ DOCX file not found or not accessible: {self.file_path}")
             return False
         except Exception as e:
             import traceback
-            print(f"Error processing DOCX: {e}")
-            print(f"DOCX processing stack trace: {traceback.format_exc()}")
+            print(f"❌ Error processing DOCX: {e}")
+            print(f"❌ DOCX processing stack trace: {traceback.format_exc()}")
             return False
     
     def _process_pptx(self) -> bool:
@@ -272,7 +257,7 @@ class DocumentProcessor:
                 
                 if slide_text:  # Only add slides with text content
                     self.pages.append({
-                        "page_num": slide_num,
+                        "page_number": slide_num,
                         "content": "\n".join(slide_text)
                     })
                     slide_num += 1
@@ -306,16 +291,20 @@ class DocumentProcessor:
         Returns:
             List[Dict[str, Any]]: List of document chunks with metadata.
         """
+        print(f"✂️ Starting chunking process...")
         if chunk_size is None:
             chunk_size = settings.chunk_size
         if chunk_overlap is None:
             chunk_overlap = settings.chunk_overlap
         
+        print(f"✂️ Chunk size: {chunk_size}, Overlap: {chunk_overlap}")
         chunks = []
         
         # Process each page separately to maintain page references
-        for page in self.pages:
-            page_num = page["page_num"]
+        print(f"✂️ Processing {len(self.pages)} pages...")
+        for i, page in enumerate(self.pages):
+            # Use consistent key name for page number
+            page_num = page.get("page_number", page.get("page_num", i + 1))
             text = page["content"]
             
             # Skip empty pages
@@ -334,11 +323,13 @@ class DocumentProcessor:
                 })
                 continue
             
-            # Split the page into chunks
+            # Split the page into chunks efficiently
             start = 0
-            chunk_index = 0
+            max_iterations = len(text) // max(1, chunk_size - chunk_overlap) + 10  # Safety limit
+            iteration_count = 0
             
-            while start < len(text):
+            while start < len(text) and iteration_count < max_iterations:
+                iteration_count += 1
                 # Find the end of the chunk
                 end = start + chunk_size
                 
@@ -364,10 +355,13 @@ class DocumentProcessor:
                         }
                     })
                 
-                # Move to the next chunk with overlap
-                start = end - chunk_overlap
-                chunk_index += 1
+                # Move to the next chunk with overlap, ensuring we always advance
+                next_start = end - chunk_overlap
+                if next_start <= start:  # Safety check to prevent infinite loops
+                    next_start = start + max(1, chunk_size // 2)  # Force advancement
+                start = next_start
         
+        print(f"✂️ Chunking complete! Created {len(chunks)} chunks")
         return chunks
     
     def _process_pdf_ultra_fast(self) -> bool:
@@ -393,7 +387,7 @@ class DocumentProcessor:
                             text = page.extract_text()
                             if text.strip():  # Only add non-empty pages
                                 self.pages.append({
-                                    "page_num": page_num + 1,
+                                    "page_number": page_num + 1,
                                     "content": text.strip()
                                 })
                         except Exception as e:
@@ -421,7 +415,7 @@ class DocumentProcessor:
                             text = page.extract_text()
                             if text and text.strip():
                                 self.pages.append({
-                                    "page_num": page_num + 1,
+                                    "page_number": page_num + 1,
                                     "content": text.strip()
                                 })
                         except Exception as e:
@@ -442,6 +436,31 @@ class DocumentProcessor:
                 
         except Exception as e:
             print(f"Ultra-fast processing failed: {e}")
+            return False
+    
+    def _process_text(self) -> bool:
+        """
+        Process a plain text file.
+        
+        Returns:
+            bool: True if processing was successful, False otherwise.
+        """
+        try:
+            print(f"📄 Starting text file processing...")
+            
+            with open(self.file_path, 'r', encoding='utf-8') as file:
+                text_content = file.read()
+            
+            self.text_content = text_content
+            self.page_count = 1  # Text files are treated as single page
+            self.pages = [{"page_number": 1, "content": text_content}]
+            
+            print(f"✅ Text processing complete. Extracted {len(self.text_content)} characters")
+            return True
+        except Exception as e:
+            import traceback
+            print(f"❌ Error processing text file: {e}")
+            print(f"❌ Text processing stack trace: {traceback.format_exc()}")
             return False
     
     def get_page_count(self) -> int:

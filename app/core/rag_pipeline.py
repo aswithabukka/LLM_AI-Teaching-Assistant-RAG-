@@ -84,7 +84,12 @@ class RAGPipeline:
         
         # Lazy initialize vector store before upserting
         if vectors and self._ensure_vector_store():
-            self.vector_store.upsert_vectors(vectors)
+            print(f"🔄 Indexing {len(vectors)} chunks in ChromaDB...")
+            success = self.vector_store.upsert_vectors(vectors)
+            if success:
+                print(f"✅ Successfully indexed {len(vectors)} chunks")
+            else:
+                print(f"❌ Failed to index chunks in ChromaDB")
         
         return vector_ids
     

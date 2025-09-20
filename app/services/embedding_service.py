@@ -55,6 +55,7 @@ class EmbeddingService:
                 return []
         
         try:
+            print(f"🔄 Generating embeddings for {len(texts)} texts...")
             if self.client:  # OpenAI
                 # Split into batches of 100 texts (OpenAI limit)
                 batch_size = 100
@@ -62,6 +63,7 @@ class EmbeddingService:
                 
                 for i in range(0, len(texts), batch_size):
                     batch_texts = texts[i:i + batch_size]
+                    print(f"📡 Calling OpenAI API for batch {i//batch_size + 1}/{(len(texts)-1)//batch_size + 1}")
                     response = self.client.embeddings.create(
                         input=batch_texts,
                         model=self.model_name
@@ -69,6 +71,7 @@ class EmbeddingService:
                     batch_embeddings = [item.embedding for item in response.data]
                     all_embeddings.extend(batch_embeddings)
                 
+                print(f"✅ Generated {len(all_embeddings)} embeddings")
                 return all_embeddings
             
             elif self.model:  # Sentence Transformers

@@ -1,7 +1,7 @@
 import os
-import json
-from typing import List, Dict, Any, Optional, Tuple
-import pinecone
+from typing import List, Dict, Any, Optional
+import chromadb
+from chromadb.config import Settings
 import numpy as np
 
 from app.config.settings import settings
@@ -10,64 +10,57 @@ from app.config.settings import settings
 class VectorStore:
     """
     Vector database service for storing and retrieving document embeddings.
-    Uses Pinecone as the vector database.
+    Uses ChromaDB as the vector database.
     """
     
     def __init__(self):
         """Initialize the vector store service."""
-        self.pc = None
-        self.index = None
-        self.index_name = settings.vector_db_name
+        self.client = None
+        self.collection = None
+        self.collection_name = "course_notes_embeddings"
         self.dimension = settings.vector_db_dimension
         self.initialized = False
     
     def initialize(self) -> bool:
         """
-        Initialize the connection to Pinecone.
+        Initialize the connection to ChromaDB.
         
         Returns:
             bool: True if initialization was successful, False otherwise.
         """
         # Quick validation before attempting connection
-        if not settings.pinecone_api_key or settings.pinecone_api_key == "":
-            print("No Pinecone API key provided. Vector store will not be available.")
-            return False
-            
         try:
-            import requests
-            from requests.adapters import HTTPAdapter
+            print("Initializing ChromaDB vector store...")
             
-            # Configure with short timeouts to fail quickly
-            session = requests.Session()
-            adapter = HTTPAdapter(max_retries=1)  # Minimal retries
-            session.mount('https://', adapter)
+            # Initialize ChromaDB client (persistent storage)
+            persist_directory = os.path.join(os.getcwd(), "data", "chromadb")
+            os.makedirs(persist_directory, exist_ok=True)
             
-            # Initialize Pinecone client with custom session and timeouts
-            self.pc = pinecone.Pinecone(
-                api_key=settings.pinecone_api_key,
-                request_options={
-                    "timeout": 3.0  # Short 3 second timeout
-                }
+            self.client = chromadb.PersistentClient(
+                path=persist_directory,
+                settings=Settings(
+                    anonymized_telemetry=False
+                )
             )
             
-            # Quick check if index exists with timeout
-            existing_indexes = self.pc.list_indexes().names()
-            
-            if self.index_name not in existing_indexes:
-                # Create a new index with timeouts
-                self.pc.create_index(
-                    name=self.index_name,
-                    dimension=self.dimension,
-                    metric="cosine",
-                    spec=pinecone.ServerlessSpec(cloud="aws", region="us-east-1")
+            # Get or create collection
+            try:
+                self.collection = self.client.get_collection(
+                    name=self.collection_name
                 )
+                print(f"Connected to existing ChromaDB collection: {self.collection_name}")
+            except:
+                self.collection = self.client.create_collection(
+                    name=self.collection_name,
+                    metadata={"hnsw:space": "cosine"}
+                )
+                print(f"Created new ChromaDB collection: {self.collection_name}")
             
-            # Connect to the index
-            self.index = self.pc.Index(self.index_name)
             self.initialized = True
             return True
+            
         except Exception as e:
-            print(f"Error initializing vector store: {e}")
+            print(f"Error initializing ChromaDB: {e}")
             return False
     
     def upsert_vectors(self, vectors: List[Dict[str, Any]]) -> bool:
@@ -86,14 +79,67 @@ class VectorStore:
                 return False
         
         try:
-            # Upsert vectors in batches of 100
-            batch_size = 100
-            for i in range(0, len(vectors), batch_size):
-                batch = vectors[i:i + batch_size]
-                self.index.upsert(vectors=batch)
+            # Prepare data for ChromaDB
+            ids = []
+            embeddings = []
+            metadatas = []
+            documents = []
+            
+            for vector in vectors:
+                ids.append(vector["id"])
+                embeddings.append(vector["values"])
+                metadata = vector.get("metadata", {})
+                metadatas.append(metadata)
+                # Use content from metadata as document text
+                documents.append(metadata.get("content", ""))
+            
+            # Check if any IDs already exist and handle duplicates
+            try:
+                existing_results = self.collection.get(ids=ids)
+                existing_ids = set(existing_results.get("ids", []))
+                
+                # Filter out existing IDs to avoid duplicates
+                new_ids = []
+                new_embeddings = []
+                new_metadatas = []
+                new_documents = []
+                
+                for i, doc_id in enumerate(ids):
+                    if doc_id not in existing_ids:
+                        new_ids.append(doc_id)
+                        new_embeddings.append(embeddings[i])
+                        new_metadatas.append(metadatas[i])
+                        new_documents.append(documents[i])
+                
+                if new_ids:
+                    # Add only new vectors to ChromaDB collection
+                    self.collection.add(
+                        ids=new_ids,
+                        embeddings=new_embeddings,
+                        metadatas=new_metadatas,
+                        documents=new_documents
+                    )
+                    print(f"Successfully added {len(new_ids)} new vectors to ChromaDB")
+                else:
+                    print(f"All {len(vectors)} vectors already exist in ChromaDB")
+                    
+            except Exception as get_error:
+                # If get() fails, try adding all vectors (collection might be empty)
+                print(f"Could not check existing vectors, adding all: {get_error}")
+                self.collection.add(
+                    ids=ids,
+                    embeddings=embeddings,
+                    metadatas=metadatas,
+                    documents=documents
+                )
+                print(f"Successfully added {len(vectors)} vectors to ChromaDB")
+            
             return True
+            
         except Exception as e:
-            print(f"Error upserting vectors: {e}")
+            import traceback
+            print(f"Error adding vectors to ChromaDB: {e}")
+            print(f"ChromaDB error details: {traceback.format_exc()}")
             return False
     
     def delete_vectors(self, vector_ids: List[str]) -> bool:
@@ -111,14 +157,12 @@ class VectorStore:
                 return False
         
         try:
-            # Delete vectors in batches of 100
-            batch_size = 100
-            for i in range(0, len(vector_ids), batch_size):
-                batch = vector_ids[i:i + batch_size]
-                self.index.delete(ids=batch)
+            # Delete vectors from ChromaDB collection
+            self.collection.delete(ids=vector_ids)
+            print(f"Successfully deleted {len(vector_ids)} vectors from ChromaDB")
             return True
         except Exception as e:
-            print(f"Error deleting vectors: {e}")
+            print(f"Error deleting vectors from ChromaDB: {e}")
             return False
     
     def query_vectors(
@@ -143,23 +187,22 @@ class VectorStore:
                 return []
         
         try:
-            # Query the index
-            results = self.index.query(
-                vector=query_vector,
-                top_k=top_k,
-                include_values=False,
-                include_metadata=True,
-                filter=filter
+            # Query ChromaDB
+            results = self.collection.query(
+                query_embeddings=[query_vector],
+                n_results=top_k,
+                where=filter
             )
             
-            # Format the results
+            # Format the results for ChromaDB
             formatted_results = []
-            for match in results["matches"]:
-                formatted_results.append({
-                    "id": match["id"],
-                    "score": match["score"],
-                    "metadata": match["metadata"]
-                })
+            if results["ids"] and len(results["ids"]) > 0:
+                for i, doc_id in enumerate(results["ids"][0]):
+                    formatted_results.append({
+                        "id": doc_id,
+                        "score": 1.0 - results["distances"][0][i],  # Convert distance to similarity
+                        "metadata": results["metadatas"][0][i] if results["metadatas"] else {}
+                    })
             
             return formatted_results
         except Exception as e:
@@ -214,9 +257,15 @@ class VectorStore:
                 return {}
         
         try:
-            # Get index stats
-            stats = self.index.describe_index_stats()
-            return stats
+            # Get collection stats from ChromaDB
+            count = self.collection.count()
+            
+            return {
+                "total_vectors": count,
+                "dimension": self.dimension,
+                "collection_name": self.collection_name
+            }
+            
         except Exception as e:
             print(f"Error getting vector store stats: {e}")
-            return {"namespaces": {}, "dimension": self.dimension, "total_vector_count": 0}
+            return {}

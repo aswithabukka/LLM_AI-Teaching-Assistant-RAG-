@@ -91,35 +91,49 @@ class FileService:
             Tuple[bool, int, list]: Success status, page count, and list of chunks.
         """
         try:
+            print(f"📄 FileService: Starting document processing for {document.original_filename}")
+            
             # Check file size for ultra-fast processing
             import os
             file_size = os.path.getsize(document.file_path) if os.path.exists(document.file_path) else 0
-            tiny_file_threshold = 15 * 1024  # 15KB threshold
+            tiny_file_threshold = 50 * 1024  # 50KB threshold for ultra-fast processing
             use_ultra_fast = file_size > 0 and file_size < tiny_file_threshold
             
+            print(f"📊 File size: {file_size/1024:.1f}KB, Ultra-fast: {use_ultra_fast}")
+            
             # Create document processor with ultra-fast flag
+            print(f"🔧 Creating DocumentProcessor...")
             processor = DocumentProcessor(document.file_path, document.file_type, use_ultra_fast_processing=use_ultra_fast)
             
             # Process the document
+            print(f"⚙️ Calling processor.process()...")
             success = processor.process()
             if not success:
+                print(f"❌ Document processing failed")
                 return False, 0, []
             
+            print(f"✅ Document processing succeeded")
+            
             # Get page count
+            print(f"📄 Getting page count...")
             page_count = processor.get_page_count()
+            print(f"📄 Page count: {page_count}")
             
             # Create chunks
+            print(f"✂️ Creating chunks...")
             chunks = processor.chunk_document()
+            print(f"✂️ Created {len(chunks)} chunks")
             
             # Update document with page count
             document.page_count = page_count
             
+            print(f"✅ FileService: Document processing complete")
             return True, page_count, chunks
         
         except Exception as e:
             import traceback
-            print(f"Error processing document: {e}")
-            print(f"Processing error details: {traceback.format_exc()}")
+            print(f"❌ Error processing document: {e}")
+            print(f"❌ Processing error details: {traceback.format_exc()}")
             return False, 0, []
     
     def get_document_path(self, document: Document) -> str:

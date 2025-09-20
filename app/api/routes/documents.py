@@ -91,7 +91,7 @@ async def upload_document(
             
             # Check file size for optimized processing path
             file_size = os.path.getsize(thread_document.file_path) if os.path.exists(thread_document.file_path) else 0
-            tiny_file_threshold = 15 * 1024  # 15KB threshold for ultra-fast processing
+            tiny_file_threshold = 50 * 1024  # 50KB threshold for ultra-fast processing
             use_ultra_fast_path = file_size > 0 and file_size < tiny_file_threshold
             
             # Log the path we're using
