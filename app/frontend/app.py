@@ -227,6 +227,33 @@ def cancel_document_processing(token: str, document_id: int) -> bool:
         return False
 
 
+def delete_document(token: str, document_id: int) -> bool:
+    """
+    Delete a processed document and all its data.
+    
+    Args:
+        token: Authentication token.
+        document_id: Document ID to delete.
+        
+    Returns:
+        bool: True if deletion was successful, False otherwise.
+    """
+    try:
+        response = requests.delete(
+            f"{API_URL}/api/documents/{document_id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        
+        if response.status_code == 200:
+            return True
+        else:
+            print(f"Failed to delete document: {response.status_code}")
+            return False
+    except Exception as e:
+        print(f"Error deleting document: {e}")
+        return False
+
+
 def get_documents(token: str, course_id: int) -> List[Dict[str, Any]]:
     """
     Get documents for a course.
@@ -577,6 +604,14 @@ def show_courses_page():
                                 st.rerun()
                             else:
                                 st.error("Failed to cancel document processing")
+                    else:
+                        # Show delete button for processed documents
+                        if st.button("🗑️ Delete", key=f"delete_{document['id']}"):
+                            if delete_document(st.session_state.token["access_token"], document["id"]):
+                                st.success(f"Document '{document['original_filename']}' deleted successfully")
+                                st.rerun()
+                            else:
+                                st.error("Failed to delete document")
                         
                 # If there's an error, show it
                 if document.get("processing_error"):
