@@ -3,6 +3,7 @@ import requests
 import json
 import os
 import time
+import re
 from typing import Dict, List, Any, Optional
 
 # Set page configuration
@@ -15,6 +16,94 @@ st.set_page_config(
 
 # API URL
 API_URL = "http://127.0.0.1:8000"
+
+
+# Frontend validation functions
+def validate_email_frontend(email: str) -> bool:
+    """Validate email format on frontend."""
+    if not email or not isinstance(email, str):
+        return False
+    
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    
+    if len(email) > 254:
+        return False
+    
+    if '..' in email or email.startswith('.') or email.endswith('.'):
+        return False
+    
+    return bool(re.match(email_pattern, email))
+
+
+def get_password_strength_frontend(password: str) -> Dict[str, Any]:
+    """Calculate password strength on frontend."""
+    if not password:
+        return {"score": 0, "level": "Very Weak", "feedback": []}
+    
+    score = 0
+    feedback = []
+    
+    # Length scoring
+    length = len(password)
+    if length >= 8:
+        score += 25
+    elif length >= 6:
+        score += 15
+        feedback.append("Consider using a longer password")
+    else:
+        feedback.append("Password is too short")
+    
+    # Character variety scoring
+    has_lower = bool(re.search(r'[a-z]', password))
+    has_upper = bool(re.search(r'[A-Z]', password))
+    has_digit = bool(re.search(r'\d', password))
+    has_special = bool(re.search(r'[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]', password))
+    
+    char_types = sum([has_lower, has_upper, has_digit, has_special])
+    score += char_types * 15
+    
+    # Bonus for good practices
+    if length >= 12:
+        score += 10
+        feedback.append("Great length!")
+    
+    if char_types >= 3:
+        feedback.append("Good character variety!")
+    
+    # Penalties
+    if re.search(r'(.)\1{2,}', password):
+        score -= 10
+        feedback.append("Avoid repeating characters")
+    
+    # Determine strength level
+    if score >= 80:
+        level = "Very Strong"
+    elif score >= 60:
+        level = "Strong"
+    elif score >= 40:
+        level = "Moderate"
+    elif score >= 20:
+        level = "Weak"
+    else:
+        level = "Very Weak"
+    
+    return {
+        "score": max(0, min(100, score)),
+        "level": level,
+        "feedback": feedback
+    }
+
+
+def get_strength_color(level: str) -> str:
+    """Get color for password strength level."""
+    colors = {
+        "Very Weak": "#ff4444",
+        "Weak": "#ff8800",
+        "Moderate": "#ffaa00",
+        "Strong": "#88cc00",
+        "Very Strong": "#00cc44"
+    }
+    return colors.get(level, "#cccccc")
 
 
 # Authentication functions
@@ -429,35 +518,140 @@ def show_login_page():
     
     with tab1:
         st.header("Login")
-        email = st.text_input("Email", key="login_email")
-        password = st.text_input("Password", type="password", key="login_password")
         
-        if st.button("Login"):
-            if email and password:
-                token = login(email, password)
-                if token:
-                    st.session_state.token = token
-                    st.rerun()
-                else:
-                    st.error("Invalid email or password")
+        # Email input with validation
+        email = st.text_input("Email", key="login_email", placeholder="Enter your email address")
+        
+        # Show email validation feedback
+        if email and not validate_email_frontend(email):
+            st.error("❌ Please enter a valid email address")
+        
+        # Password input
+        password = st.text_input("Password", type="password", key="login_password", 
+                               placeholder="Enter your password")
+        
+        # Login button
+        if st.button("Login", type="primary"):
+            # Client-side validation
+            validation_errors = []
+            
+            if not email:
+                validation_errors.append("Email is required")
+            elif not validate_email_frontend(email):
+                validation_errors.append("Please enter a valid email address")
+            
+            if not password:
+                validation_errors.append("Password is required")
+            
+            if validation_errors:
+                for error in validation_errors:
+                    st.error(error)
             else:
-                st.error("Please enter email and password")
+                # Attempt login
+                with st.spinner("Logging in..."):
+                    token = login(email, password)
+                    if token:
+                        st.session_state.token = token
+                        st.success("✅ Login successful!")
+                        st.rerun()
+                    else:
+                        st.error("❌ Invalid email or password. Please check your credentials and try again.")
     
     with tab2:
         st.header("Register")
-        email = st.text_input("Email", key="register_email")
-        password = st.text_input("Password", type="password", key="register_password")
-        confirm_password = st.text_input("Confirm Password", type="password", key="register_confirm_password")
         
-        if st.button("Register"):
-            if email and password and confirm_password:
-                if password == confirm_password:
-                    if register(email, password):
-                        st.success("Registration successful! Please login.")
-                else:
-                    st.error("Passwords do not match")
+        # Email input with validation
+        email = st.text_input("Email", key="register_email", placeholder="Enter your email address")
+        
+        # Email validation feedback
+        if email:
+            if validate_email_frontend(email):
+                st.success("✅ Valid email format")
             else:
-                st.error("Please fill all fields")
+                st.error("❌ Please enter a valid email address")
+        
+        # Password input with real-time validation
+        password = st.text_input("Password", type="password", key="register_password", 
+                                placeholder="Enter a strong password")
+        
+        # Password strength indicator
+        if password:
+            strength_info = get_password_strength_frontend(password)
+            
+            # Display strength meter
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                progress_color = get_strength_color(strength_info["level"])
+                st.progress(strength_info["score"] / 100)
+            with col2:
+                st.write(f"**{strength_info['level']}**")
+            
+            # Show requirements
+            st.write("**Password Requirements:**")
+            requirements = [
+                ("At least 8 characters", len(password) >= 8),
+                ("Contains uppercase letter", any(c.isupper() for c in password)),
+                ("Contains lowercase letter", any(c.islower() for c in password)),
+                ("Contains digit", any(c.isdigit() for c in password)),
+                ("Contains special character", any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in password))
+            ]
+            
+            for req, met in requirements:
+                if met:
+                    st.success(f"✅ {req}")
+                else:
+                    st.error(f"❌ {req}")
+            
+            # Show feedback
+            if strength_info["feedback"]:
+                st.info("💡 " + "; ".join(strength_info["feedback"]))
+        
+        # Confirm password
+        confirm_password = st.text_input("Confirm Password", type="password", 
+                                       key="register_confirm_password",
+                                       placeholder="Re-enter your password")
+        
+        # Password match validation
+        if password and confirm_password:
+            if password == confirm_password:
+                st.success("✅ Passwords match")
+            else:
+                st.error("❌ Passwords do not match")
+        
+        # Register button
+        if st.button("Register", type="primary"):
+            # Client-side validation
+            validation_errors = []
+            
+            if not email:
+                validation_errors.append("Email is required")
+            elif not validate_email_frontend(email):
+                validation_errors.append("Please enter a valid email address")
+            
+            if not password:
+                validation_errors.append("Password is required")
+            elif len(password) < 8:
+                validation_errors.append("Password must be at least 8 characters long")
+            
+            if not confirm_password:
+                validation_errors.append("Please confirm your password")
+            elif password != confirm_password:
+                validation_errors.append("Passwords do not match")
+            
+            if validation_errors:
+                for error in validation_errors:
+                    st.error(error)
+            else:
+                # Attempt registration
+                with st.spinner("Creating your account..."):
+                    if register(email, password):
+                        st.success("🎉 Registration successful! Please login with your new account.")
+                        # Clear form
+                        st.session_state.register_email = ""
+                        st.session_state.register_password = ""
+                        st.session_state.register_confirm_password = ""
+                    else:
+                        st.error("Registration failed. Please try again.")
 
 
 def show_main_app(user_info):
