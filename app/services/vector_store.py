@@ -224,22 +224,9 @@ class VectorStore:
                 return False
         
         try:
-            # First, query to get the IDs of vectors to delete
-            results = self.index.query(
-                vector=[0.0] * self.dimension,  # Dummy vector
-                top_k=10000,  # Get as many as possible
-                include_values=False,
-                include_metadata=False,
-                filter=metadata_filter
-            )
-            
-            # Extract IDs
-            vector_ids = [match["id"] for match in results["matches"]]
-            
-            # Delete the vectors
-            if vector_ids:
-                return self.delete_vectors(vector_ids)
-            
+            # For ChromaDB, we can delete directly using where clause
+            self.collection.delete(where=metadata_filter)
+            print(f"Successfully deleted vectors with metadata filter: {metadata_filter}")
             return True
         except Exception as e:
             print(f"Error deleting vectors by metadata: {e}")
@@ -249,23 +236,59 @@ class VectorStore:
         """
         Get statistics about the vector database.
         
+        Args:
+            None
+        
         Returns:
             Dict[str, Any]: Statistics about the vector database.
         """
         if not self.initialized:
             if not self.initialize():
-                return {}
+                return {"error": "Vector store not initialized"}
         
         try:
-            # Get collection stats from ChromaDB
-            count = self.collection.count()
-            
+            # Get collection info
+            collection_info = self.collection.get()
             return {
-                "total_vectors": count,
+                "collection_name": self.collection_name,
+                "total_vectors": len(collection_info.get("ids", [])),
                 "dimension": self.dimension,
-                "collection_name": self.collection_name
+                "initialized": self.initialized
             }
-            
         except Exception as e:
-            print(f"Error getting vector store stats: {e}")
-            return {}
+            return {"error": f"Failed to get stats: {e}"}
+    
+    def list_vectors_by_document(self, document_id: int) -> List[Dict[str, Any]]:
+        """
+        List all vectors for a specific document (for debugging).
+        
+        Args:
+            document_id: The document ID to search for.
+            
+        Returns:
+            List[Dict[str, Any]]: List of vectors with metadata.
+        """
+        if not self.initialized:
+            if not self.initialize():
+                return []
+        
+        try:
+            # Query all vectors for this document
+            results = self.collection.get(
+                where={"document_id": {"$eq": document_id}},
+                include=["metadatas", "documents"]
+            )
+            
+            vectors = []
+            if results["ids"]:
+                for i, vector_id in enumerate(results["ids"]):
+                    vectors.append({
+                        "id": vector_id,
+                        "metadata": results["metadatas"][i] if results["metadatas"] else {},
+                        "content_preview": results["documents"][i][:100] + "..." if results["documents"] and results["documents"][i] else ""
+                    })
+            
+            return vectors
+        except Exception as e:
+            print(f"Error listing vectors for document {document_id}: {e}")
+            return []

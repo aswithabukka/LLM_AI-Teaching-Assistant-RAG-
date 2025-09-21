@@ -346,6 +346,33 @@ def create_course(token: str, title: str, description: str) -> Optional[Dict[str
         return None
 
 
+def delete_course(token: str, course_id: int) -> bool:
+    """
+    Delete a course.
+    
+    Args:
+        token: Authentication token.
+        course_id: ID of the course to delete.
+        
+    Returns:
+        bool: True if successful, False otherwise.
+    """
+    try:
+        response = requests.delete(
+            f"{API_URL}/api/courses/{course_id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        
+        if response.status_code == 200:
+            return True
+        else:
+            st.error(f"Error deleting course: {response.json().get('detail', 'Unknown error')}")
+            return False
+    except Exception as e:
+        st.error(f"Error deleting course: {e}")
+        return False
+
+
 # Document functions
 def get_document_status(token: str, document_id: int) -> Dict[str, Any]:
     """
@@ -793,10 +820,9 @@ def show_login_page():
                 with st.spinner("Creating your account..."):
                     if register(email, password):
                         st.success("🎉 Registration successful! Please login with your new account.")
-                        # Clear form
-                        st.session_state.register_email = ""
-                        st.session_state.register_password = ""
-                        st.session_state.register_confirm_password = ""
+                        st.info("💡 You can now switch to the Login tab to access your account.")
+                        # Note: We can't clear form fields after widgets are created in Streamlit
+                        # The form will be cleared when the user refreshes or navigates away
                     else:
                         st.error("Registration failed. Please try again.")
         
@@ -868,6 +894,52 @@ def show_main_app(user_info):
         
         st.session_state.selected_course_id = course_ids[selected_course_index]
         st.session_state.selected_course_name = course_names[selected_course_index]
+        
+        # Add delete course button for selected course
+        if st.sidebar.button("🗑️ Delete Selected Course", type="secondary"):
+            # Use session state to track deletion confirmation
+            if "confirm_delete_course" not in st.session_state:
+                st.session_state.confirm_delete_course = True
+                st.sidebar.warning(f"⚠️ Are you sure you want to delete '{st.session_state.selected_course_name}'?")
+                st.sidebar.write("This action cannot be undone!")
+            else:
+                # User clicked delete again, proceed with deletion
+                if delete_course(st.session_state.token["access_token"], st.session_state.selected_course_id):
+                    st.success(f"Course '{st.session_state.selected_course_name}' deleted successfully!")
+                    # Clear the confirmation state
+                    if "confirm_delete_course" in st.session_state:
+                        del st.session_state.confirm_delete_course
+                    # Clear selected course
+                    if "selected_course_id" in st.session_state:
+                        del st.session_state.selected_course_id
+                    if "selected_course_name" in st.session_state:
+                        del st.session_state.selected_course_name
+                    st.rerun()
+                else:
+                    # Clear the confirmation state on error
+                    if "confirm_delete_course" in st.session_state:
+                        del st.session_state.confirm_delete_course
+        
+        # Show confirmation dialog if needed
+        if "confirm_delete_course" in st.session_state and st.session_state.confirm_delete_course:
+            col1, col2 = st.sidebar.columns(2)
+            with col1:
+                if st.button("✅ Confirm", key="confirm_delete_yes"):
+                    if delete_course(st.session_state.token["access_token"], st.session_state.selected_course_id):
+                        st.success(f"Course '{st.session_state.selected_course_name}' deleted successfully!")
+                        # Clear states
+                        del st.session_state.confirm_delete_course
+                        if "selected_course_id" in st.session_state:
+                            del st.session_state.selected_course_id
+                        if "selected_course_name" in st.session_state:
+                            del st.session_state.selected_course_name
+                        st.rerun()
+                    else:
+                        del st.session_state.confirm_delete_course
+            with col2:
+                if st.button("❌ Cancel", key="confirm_delete_no"):
+                    del st.session_state.confirm_delete_course
+                    st.rerun()
     else:
         st.sidebar.info("No courses available. Create one below.")
     

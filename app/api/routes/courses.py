@@ -5,10 +5,12 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_active_user
 from app.core.database import get_db
-from app.models.database import User, Course
+from app.models.database import User, Course, Document, DocumentChunk
 from app.models.schemas import CourseCreate, CourseResponse
+from app.core.rag_pipeline import RAGPipeline
 
 router = APIRouter()
+rag_pipeline = RAGPipeline()
 
 
 @router.post("/", response_model=CourseResponse)
@@ -108,6 +110,23 @@ async def delete_course(
             detail="Course not found",
         )
     
+    # Delete all vectors associated with this course from vector store
+    try:
+        metadata_filter = {"course_id": {"$eq": course_id}}
+        rag_pipeline.vector_store.delete_by_metadata(metadata_filter)
+        print(f"Deleted vectors for course {course_id}")
+    except Exception as e:
+        print(f"Warning: Could not delete vectors for course {course_id}: {e}")
+    
+    # Delete all document chunks for this course (cascade will handle documents)
+    documents = db.query(Document).filter(Document.course_id == course_id).all()
+    for document in documents:
+        chunks = db.query(DocumentChunk).filter(DocumentChunk.document_id == document.id).all()
+        for chunk in chunks:
+            db.delete(chunk)
+        db.delete(document)
+    
+    # Delete the course
     db.delete(course)
     db.commit()
     

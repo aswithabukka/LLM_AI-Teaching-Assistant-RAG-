@@ -357,8 +357,23 @@ async def delete_document(
     
     # Delete document chunks from vector store
     chunks = db.query(DocumentChunk).filter(DocumentChunk.document_id == document_id).all()
-    vector_ids = [chunk.vector_id for chunk in chunks]
-    rag_pipeline.vector_store.delete_vectors(vector_ids)
+    vector_ids = [chunk.vector_id for chunk in chunks if chunk.vector_id]
+    
+    if vector_ids:
+        print(f"Deleting {len(vector_ids)} vectors from vector store for document {document_id}")
+        success = rag_pipeline.vector_store.delete_vectors(vector_ids)
+        if not success:
+            print(f"Warning: Failed to delete some vectors for document {document_id}")
+    else:
+        print(f"No vector IDs found for document {document_id} chunks")
+    
+    # Also try to delete by metadata as a fallback
+    try:
+        metadata_filter = {"document_id": {"$eq": document_id}}
+        rag_pipeline.vector_store.delete_by_metadata(metadata_filter)
+        print(f"Attempted to delete vectors by metadata for document {document_id}")
+    except Exception as e:
+        print(f"Warning: Could not delete vectors by metadata for document {document_id}: {e}")
     
     # Delete document from database
     db.delete(document)

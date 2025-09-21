@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.routes import auth, courses, documents, questions, admin, quiz, oauth
+from app.api.routes import auth, oauth, courses, documents, questions, admin, quiz, debug
 
 # Create main API router
 api_router = APIRouter()
@@ -12,3 +12,4 @@ api_router.include_router(documents.router, prefix="/documents", tags=["Document
 api_router.include_router(questions.router, prefix="/questions", tags=["Questions"])
 api_router.include_router(admin.router, prefix="/admin", tags=["Admin"])
 api_router.include_router(quiz.router, tags=["Quiz"])
+api_router.include_router(debug.router, prefix="/debug", tags=["Debug"])

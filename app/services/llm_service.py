@@ -156,14 +156,27 @@ ANSWER:"""
             
             print(f"✅ LLM response received: {len(answer_text)} characters")
             
-            # Create citations from the context chunks used
+            # Check if the AI says it doesn't have enough information
+            no_info_phrases = [
+                "I don't have enough information",
+                "I couldn't find any relevant information",
+                "I cannot answer this question",
+                "not enough information",
+                "no relevant information",
+                "cannot be answered based on",
+                "not available in the provided"
+            ]
+            
+            has_no_info = any(phrase.lower() in answer_text.lower() for phrase in no_info_phrases)
+            
+            # Create citations from the context chunks used (only if AI provided useful information)
             citations = []
             from datetime import datetime
             total_relevance = 0
             max_possible_score = 0
             
-            # Only use the first (best) chunk for citation to avoid clutter
-            if context:
+            # Only create citations if the AI provided useful information (not a "no info" response)
+            if context and not has_no_info:
                 chunk = context[0]  # Take only the best/first chunk
                 # Normalize relevance score (fallback text search can give high scores like 2.0)
                 raw_score = chunk.get("score", 0.0)
@@ -187,12 +200,18 @@ ANSWER:"""
                 citations.append(citation)
                 total_relevance = normalized_score
                 max_possible_score = 1.0
+            elif has_no_info:
+                print("🚫 No citations created - AI indicated insufficient information")
             
             # Calculate dynamic confidence based on:
             # 1. Average relevance score of retrieved chunks
             # 2. Number of chunks found (more chunks = higher confidence)
             # 3. Quality of the best match
-            if len(context) > 0:
+            # 4. Whether AI indicated insufficient information
+            if has_no_info:
+                # If AI says no info, confidence should be very low
+                confidence = 0.1
+            elif len(context) > 0 and citations:
                 avg_relevance = total_relevance / len(context)
                 chunk_count_factor = min(len(context) / 5.0, 1.0)  # Normalize to 0-1
                 best_match_score = max([c.get("score", 0.0) for c in context])

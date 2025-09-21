@@ -1,73 +1,95 @@
-# 🤖 StudyMate AI - AI Teaching Assistant with RAG
+# 📚 StudyMate AI - AI-Powered Learning Assistant
 
 A comprehensive web application that allows users to upload course notes (PDFs, slides, documents), ask questions about them, and generate interactive quizzes. The application uses Retrieval-Augmented Generation (RAG) to provide accurate answers with citations to the source material, and leverages LLM technology to create educational quizzes based on document content.
 
-This application is designed for students, researchers, teaching assistants, and instructors who want to quickly find information in their course materials and create assessment tools without having to manually search through multiple documents.
+StudyMate AI is designed for students, researchers, teaching assistants, and instructors who want to quickly find information in their course materials and create assessment tools without having to manually search through multiple documents.
 
-## 🚀 Latest Features (v2.0)
+## 🚀 Latest Features (v3.0)
 
-### 🎯 **NEW: Interactive Quiz Generation System**
-- **LLM-Powered Quiz Creation**: Generate high-quality Multiple Choice and True/False questions from uploaded documents
-- **Intelligent Question Generation**: Uses advanced prompts to create meaningful, educational questions that test comprehension
-- **Interactive Quiz Interface**: Take quizzes with immediate scoring, answer explanations, and performance tracking
-- **Flexible Quiz Settings**: Configure number of questions (5-20) and question types (MCQ, True/False, or both)
-- **Document-Based Content**: Questions are generated from actual document content, ensuring relevance and accuracy
+### 🔐 **NEW: Modern OAuth Authentication**
+- **Social Login Integration**: Login with Google and GitHub OAuth
+- **Professional UI**: ChatGPT-style login interface with modern design
+- **Enhanced Security**: JWT-based authentication with OAuth provider integration
+- **Streamlined Registration**: Clean registration flow with password validation
+- **User-Friendly Experience**: Simplified authentication process
 
-### 📄 **Enhanced Citation System**
-- **Accurate Document Names**: Citations now display actual filenames (e.g., "bigdatanotes.pdf") instead of generic IDs
-- **Single Best Citation**: Streamlined to show only the most relevant source per answer to reduce clutter
-- **Improved Metadata Storage**: Document names stored in vector database for consistent retrieval
-- **Better Citation Display**: Clean, user-friendly citation format with document name and page number
+### 🗑️ **NEW: Course & Document Management**
+- **Delete Course Functionality**: Remove courses with confirmation dialog
+- **Delete Document Support**: Remove individual documents from courses
+- **Vector Store Cleanup**: Automatic cleanup of embeddings when content is deleted
+- **Data Isolation**: Proper user data separation and privacy protection
+- **Bulk Operations**: Efficient deletion of related data and files
 
-### 🔧 **System Improvements**
-- **Ultra-fast Processing**: Optimized processing for small files (<15KB) with instant text extraction
-- **Enhanced Table Extraction**: Improved DOCX processing to extract data from tables and structured content
-- **Robust Error Handling**: Comprehensive logging and error recovery throughout the application
-- **Streamlined Authentication**: JWT-based authentication with simplified token validation
-- **Improved UI/UX**: Better navigation, course name display, and user feedback
+### 📄 **Smart Citation System**
+- **Intelligent Citation Logic**: Citations only appear when AI provides useful information
+- **No False Citations**: No citations shown for "insufficient information" responses
+- **Accurate Document Names**: Citations display actual filenames (e.g., "studyguide.pdf")
+- **Confidence-Based Display**: Citation visibility based on answer confidence
+- **Clean Presentation**: Streamlined citation format with document name and page
+
+### 🎯 **Interactive Quiz Generation**
+- **LLM-Powered Creation**: Generate high-quality Multiple Choice and True/False questions
+- **Document-Based Content**: Questions generated from actual uploaded content
+- **Interactive Interface**: Take quizzes with immediate scoring and explanations
+- **Flexible Settings**: Configure 5-20 questions with customizable question types
+- **Educational Focus**: Questions test comprehension and understanding
+
+### 🔧 **System & Performance Improvements**
+- **Enhanced Data Isolation**: Fixed cross-user data contamination issues
+- **Vector Store Management**: Proper cleanup of embeddings on deletion
+- **Improved Error Handling**: Better logging and error recovery
+- **Modern UI/UX**: Enhanced navigation and user feedback
+- **Database Optimization**: Improved schema and query performance
 
 ## Core Features
 
+### 🔐 **Authentication & Security**
+- **OAuth Integration**: Login with Google and GitHub
+- **Email Registration**: Traditional email/password authentication
+- **JWT Security**: Secure token-based authentication
+- **Data Isolation**: User data properly separated and protected
+- **Modern UI**: ChatGPT-style login interface
+
 ### 📚 **Document Management**
-- Upload and manage course notes in various formats (PDF, DOCX, PPTX, etc.)
-- Automatic document processing and chunking for optimal retrieval
-- Course-based organization of documents
-- Real-time processing status and progress tracking
+- **Multi-Format Support**: Upload PDF, DOCX, PPTX, and more
+- **Automatic Processing**: Intelligent document chunking and indexing
+- **Course Organization**: Organize documents by course/subject
+- **Delete Operations**: Remove documents and courses with proper cleanup
+- **Real-time Status**: Processing progress and status tracking
 
 ### 💬 **Intelligent Q&A System**
-- Ask questions about the content of your notes using natural language
-- Get accurate answers with citations to the source material
-- View source material inline with page numbers and document names
-- Support for follow-up questions with chat history awareness
-- Confidence scoring for answer reliability
+- **Natural Language Queries**: Ask questions in plain English
+- **Smart Citations**: Citations only shown for useful answers
+- **Accurate Sources**: Display actual document names and page numbers
+- **Chat History**: Context-aware follow-up questions
+- **Confidence Scoring**: Reliability indicators for answers
 
 ### 🎯 **Interactive Quiz Generation**
-- Generate educational quizzes from uploaded documents
-- Multiple Choice Questions (MCQ) with 4 options each
-- True/False questions with detailed explanations
-- Configurable quiz settings (5-20 questions, question types)
-- Interactive quiz interface with scoring and performance tracking
-- LLM-powered question creation for high-quality assessments
+- **AI-Powered Creation**: Generate MCQ and True/False questions
+- **Document-Based**: Questions derived from uploaded content
+- **Interactive Interface**: Take quizzes with immediate feedback
+- **Flexible Configuration**: 5-20 questions, customizable types
+- **Educational Quality**: Focus on comprehension and learning
 
 ### 🔍 **Advanced Search & Retrieval**
-- Semantic search using state-of-the-art embeddings
-- Hybrid search combining vector similarity and text matching
-- Reranking for improved result relevance
-- Context-aware retrieval for better answer quality
+- **Semantic Search**: State-of-the-art embedding-based search
+- **Hybrid Approach**: Vector similarity + text matching
+- **Smart Reranking**: Improved result relevance
+- **Context Awareness**: Better understanding of user intent
 
-### 👥 **User Management**
-- Simple email-based authentication system
-- Course creation and management
-- Chat history and session management
-- Admin features for system monitoring and quality control
+### 🗑️ **Data Management**
+- **Course Deletion**: Remove entire courses with confirmation
+- **Document Removal**: Delete individual files and documents
+- **Vector Cleanup**: Automatic embedding cleanup on deletion
+- **Data Integrity**: Consistent data state across all systems
 
 ## Tech Stack
 
 ### 🖥️ **Core Framework**
-- **Frontend**: Streamlit with interactive components
-- **Backend API**: FastAPI with async support
+- **Frontend**: Streamlit with interactive components and modern UI
+- **Backend API**: FastAPI with async support and comprehensive routing
 - **Database**: SQLAlchemy with SQLite (production-ready for PostgreSQL)
-- **Authentication**: JWT-based authentication system
+- **Authentication**: JWT + OAuth (Google, GitHub) with secure token management
 
 ### 🤖 **AI & ML Components**
 - **Embeddings**: OpenAI text-embedding-3-large
@@ -104,11 +126,16 @@ This application is designed for students, researchers, teaching assistants, and
 4. Set up environment variables:
    - Copy `.env.example` to `.env`
    - Fill in your API keys (OpenAI, Pinecone, Cohere)
-5. Initialize the database with a default admin user:
+   - **Optional**: Add OAuth credentials (Google, GitHub) for social login
+5. Set up OAuth (Optional):
+   - See `OAUTH_SETUP.md` for detailed OAuth configuration
+   - Configure Google and GitHub OAuth applications
+   - Add client IDs and secrets to `.env` file
+6. Initialize the database:
    ```
-   python scripts/init_db.py
+   python init_db.py
    ```
-6. Run the application:
+7. Run the application:
    ```
    ./start.sh
    ```
@@ -132,11 +159,13 @@ course-notes-qa/
 │   ├── api/          # FastAPI routes
 │   │   └── routes/   # API route modules
 │   │       ├── auth.py      # Authentication endpoints
-│   │       ├── courses.py   # Course management
-│   │       ├── documents.py # Document upload/management
+│   │       ├── oauth.py     # 🆕 OAuth endpoints (Google, GitHub)
+│   │       ├── courses.py   # Course management (with delete)
+│   │       ├── documents.py # Document upload/management (with delete)
 │   │       ├── questions.py # Q&A endpoints
-│   │       ├── quiz.py      # 🆕 Quiz generation endpoints
-│   │       └── admin.py     # Admin functionality
+│   │       ├── quiz.py      # Quiz generation endpoints
+│   │       ├── admin.py     # Admin functionality
+│   │       └── debug.py     # 🆕 Debug endpoints for vector store
 │   ├── core/         # Core application logic
 │   │   ├── database.py      # Database configuration
 │   │   ├── auth.py          # Authentication logic
@@ -145,8 +174,10 @@ course-notes-qa/
 │   │   ├── database.py      # SQLAlchemy models
 │   │   └── schemas.py       # Pydantic schemas (enhanced with quiz models)
 │   ├── services/     # External service integrations
-│   │   ├── llm_service.py   # LLM integration
-│   │   ├── quiz_service.py  # 🆕 Quiz generation service
+│   │   ├── llm_service.py   # LLM integration (enhanced citations)
+│   │   ├── quiz_service.py  # Quiz generation service
+│   │   ├── oauth_service.py # 🆕 OAuth service (Google, GitHub)
+│   │   ├── vector_store.py  # 🆕 Vector store with cleanup
 │   │   └── file_service.py  # File processing
 │   ├── utils/        # Utility functions
 │   ├── config/       # Configuration
@@ -159,9 +190,14 @@ course-notes-qa/
 ├── scripts/         # Utility scripts
 ├── tests/           # Unit and integration tests
 ├── .env             # Environment variables
-├── .env.example     # Example environment variables
+├── .env.example     # Example environment variables (updated)
 ├── requirements.txt # Dependencies
-├── run_app.py       # 🆕 Unified application launcher
+├── run_app.py       # Unified application launcher
+├── init_db.py       # 🆕 Database initialization script
+├── clear_vector_store.py # 🆕 Vector store cleanup utility
+├── test_vector_cleanup.py # 🆕 Vector cleanup test script
+├── OAUTH_SETUP.md   # 🆕 OAuth setup guide
+├── GOOGLE_OAUTH_SETUP.md # 🆕 Google OAuth detailed guide
 ├── Dockerfile       # Docker configuration
 ├── docker-compose.yml # Docker Compose configuration
 ├── DEPLOYMENT.md    # Deployment guide
@@ -239,30 +275,42 @@ The application can be deployed to various cloud platforms including:
 
 ## Recent Improvements & Changelog
 
-### Version 2.0 (Latest)
-- ✅ **Added Interactive Quiz Generation System**
-  - LLM-powered question creation with GPT-4o-mini
-  - Support for MCQ and True/False questions
-  - Interactive quiz interface with scoring
-  - Configurable quiz settings and question types
+### Version 3.0 (Latest - December 2024)
+- ✅ **OAuth Authentication System**
+  - Google and GitHub OAuth integration
+  - ChatGPT-style login interface
+  - Enhanced security with JWT + OAuth
+  - Streamlined user registration and login
 
-- ✅ **Enhanced Citation System**
-  - Fixed document name display in citations
-  - Improved metadata storage in vector database
-  - Streamlined to single best citation per answer
-  - Better citation formatting and display
+- ✅ **Course & Document Management**
+  - Delete course functionality with confirmation dialog
+  - Delete individual documents from courses
+  - Automatic vector store cleanup on deletion
+  - Enhanced data isolation and privacy protection
 
+- ✅ **Smart Citation System**
+  - Citations only shown for useful AI responses
+  - No citations for "insufficient information" responses
+  - Improved citation logic and confidence scoring
+  - Better user experience with accurate citations
+
+- ✅ **Vector Store Management**
+  - Fixed cross-user data contamination issues
+  - Proper cleanup of embeddings on deletion
+  - Enhanced vector store operations
+  - Debug tools for vector store monitoring
+
+- ✅ **System Enhancements**
+  - Improved error handling and logging
+  - Enhanced UI/UX with modern design
+  - Better database schema and performance
+  - Comprehensive testing and debugging tools
+
+### Version 2.0 (Previous)
+- ✅ **Interactive Quiz Generation System**
+- ✅ **Enhanced Citation System** 
 - ✅ **System Improvements**
-  - Enhanced error handling and logging
-  - Improved UI/UX with better navigation
-  - Fixed Streamlit duplicate key errors
-  - Better course name display throughout application
-
 - ✅ **Backend Enhancements**
-  - New quiz API endpoints (`/api/quiz/generate`, `/api/quiz/documents`)
-  - Enhanced RAG pipeline with document name storage
-  - Improved LLM service integration
-  - Better schema validation with Pydantic models
 
 ## Success Criteria
 
