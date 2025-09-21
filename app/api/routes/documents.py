@@ -146,7 +146,7 @@ async def upload_document(
                         # Import RAG pipeline only when needed (not for ultra-fast processing)
                         from app.core.rag_pipeline import RAGPipeline
                         rag_pipeline = RAGPipeline()
-                        vector_ids = rag_pipeline.index_document_chunks(chunks, thread_document.id)
+                        vector_ids = rag_pipeline.index_document_chunks(chunks, thread_document.id, thread_document.course_id, thread_document.original_filename)
                         thread_document.is_indexed = bool(vector_ids)
                         vector_time = time.time() - vector_start
                         print(f"⏱️ Vector indexing took {vector_time:.3f} seconds")
@@ -275,7 +275,16 @@ async def cancel_document_processing(
         if os.path.exists(document.file_path):
             os.remove(document.file_path)
         
-        # Delete document chunks if any
+        # Delete document chunks from vector store if any
+        chunks = db.query(DocumentChunk).filter(DocumentChunk.document_id == document_id).all()
+        if chunks:
+            vector_ids = [chunk.vector_id for chunk in chunks]
+            try:
+                rag_pipeline.vector_store.delete_vectors(vector_ids)
+            except Exception as e:
+                print(f"Warning: Failed to delete vectors from vector store: {e}")
+        
+        # Delete document chunks from database
         db.query(DocumentChunk).filter(DocumentChunk.document_id == document_id).delete()
         
         # Delete the document record

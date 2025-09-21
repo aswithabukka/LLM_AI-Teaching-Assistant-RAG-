@@ -461,85 +461,89 @@ def show_login_page():
 
 
 def show_main_app(user_info):
-    """
-    Show the main application.
+    """Show the main application interface."""
+    st.sidebar.title("Navigation")
     
-    Args:
-        user_info: User information.
-    """
-    # Sidebar
-    with st.sidebar:
-        st.title("Course Notes Q&A")
-        st.write(f"Welcome, {user_info['email']}")
+    # Navigation
+    page = st.sidebar.radio(
+        "Select Page",
+        ["Courses", "Quiz", "Chat History"]
+    )
+    
+    st.sidebar.divider()
+    
+    # Course management in sidebar
+    st.sidebar.subheader("Select Course")
+    courses = get_courses(st.session_state.token["access_token"])
+    
+    if courses:
+        course_names = [course["title"] for course in courses]
+        course_ids = [course["id"] for course in courses]
         
-        if st.button("Logout"):
-            st.session_state.pop("token", None)
-            st.rerun()
+        selected_course_index = st.sidebar.selectbox(
+            "Select Course",
+            range(len(courses)),
+            format_func=lambda i: course_names[i],
+        )
         
-        st.divider()
+        st.session_state.selected_course_id = course_ids[selected_course_index]
+        st.session_state.selected_course_name = course_names[selected_course_index]
+    else:
+        st.sidebar.info("No courses available. Create one below.")
+    
+    # Create new course in sidebar
+    st.sidebar.divider()
+    st.sidebar.subheader("Create New Course")
+    new_course_title = st.sidebar.text_input("Course Title")
+    new_course_description = st.sidebar.text_area("Course Description")
+    
+    if st.sidebar.button("Create Course"):
+        if new_course_title:
+            course = create_course(
+                st.session_state.token["access_token"],
+                new_course_title,
+                new_course_description,
+            )
+            if course:
+                st.success(f"Course '{new_course_title}' created successfully!")
+                st.rerun()
+        else:
+            st.error("Please enter a course title")
+    
+    # Chat History sidebar (only show when on Chat History page)
+    if page == "Chat History":
+        st.sidebar.divider()
+        st.sidebar.subheader("Chat Sessions")
+        # Get chat sessions
+        chat_sessions = get_chat_sessions(st.session_state.token["access_token"])
         
-        # Navigation
-        page = st.radio("Navigation", ["Courses", "Chat History"])
-        
-        if page == "Courses":
-            # Get courses
-            courses = get_courses(st.session_state.token["access_token"])
+        # Chat session selection
+        if chat_sessions:
+            chat_session_titles = [session["title"] for session in chat_sessions]
+            chat_session_ids = [session["id"] for session in chat_sessions]
             
-            # Course selection
-            if courses:
-                course_names = [course["title"] for course in courses]
-                course_ids = [course["id"] for course in courses]
-                
-                selected_course_index = st.selectbox(
-                    "Select Course",
-                    range(len(courses)),
-                    format_func=lambda i: course_names[i],
-                )
-                
-                st.session_state.selected_course_id = course_ids[selected_course_index]
-                st.session_state.selected_course_name = course_names[selected_course_index]
+            selected_session_index = st.sidebar.selectbox(
+                "Select Chat Session",
+                range(len(chat_sessions)),
+                format_func=lambda i: chat_session_titles[i],
+            )
             
-            # Create new course
-            st.divider()
-            st.subheader("Create New Course")
-            new_course_title = st.text_input("Course Title")
-            new_course_description = st.text_area("Course Description")
-            
-            if st.button("Create Course"):
-                if new_course_title:
-                    course = create_course(
-                        st.session_state.token["access_token"],
-                        new_course_title,
-                        new_course_description,
-                    )
-                    if course:
-                        st.success(f"Course '{new_course_title}' created successfully!")
-                        st.rerun()
-                else:
-                    st.error("Please enter a course title")
+            st.session_state.selected_chat_session_id = chat_session_ids[selected_session_index]
+        else:
+            st.sidebar.info("No chat sessions found. Start a new conversation in the Courses page.")
+    
+    # Main content area
+    st.write(f"Welcome, {user_info['email']}")
         
-        elif page == "Chat History":
-            # Get chat sessions
-            chat_sessions = get_chat_sessions(st.session_state.token["access_token"])
-            
-            # Chat session selection
-            if chat_sessions:
-                chat_session_titles = [session["title"] for session in chat_sessions]
-                chat_session_ids = [session["id"] for session in chat_sessions]
-                
-                selected_session_index = st.selectbox(
-                    "Select Chat Session",
-                    range(len(chat_sessions)),
-                    format_func=lambda i: chat_session_titles[i],
-                )
-                
-                st.session_state.selected_chat_session_id = chat_session_ids[selected_session_index]
-            else:
-                st.info("No chat sessions found. Start a new conversation in the Courses page.")
+    if st.button("Logout"):
+        st.session_state.pop("token", None)
+        st.rerun()
     
     # Main content
     if page == "Courses":
         show_courses_page()
+    elif page == "Quiz":
+        show_quiz_page()
     elif page == "Chat History":
         show_chat_history_page()
 
@@ -649,7 +653,9 @@ def show_courses_page():
                             st.divider()
                             st.write("**Sources:**")
                             for citation in message["citations"]:
-                                with st.expander(f"Source: {citation['source']}, Page: {citation['page']}"):
+                                page_info = f", Page {citation['page_number']}" if citation.get('page_number') else ""
+                                doc_name = citation.get('document_name', f"Document {citation['document_id']}")
+                                with st.expander(f"📄 {doc_name}{page_info}"):
                                     st.write(citation["quote"])
             
             # Question input
@@ -686,9 +692,16 @@ def show_courses_page():
                         # Display citations
                         if answer["citations"]:
                             st.divider()
-                            st.write("**Sources:**")
-                            for citation in answer["citations"]:
-                                with st.expander(f"Source: {citation['source']}, Page: {citation['page']}"):
+                            st.write("**📚 Sources:**")
+                            for i, citation in enumerate(answer["citations"], 1):
+                                page_info = f", Page {citation['page_number']}" if citation['page_number'] else ""
+                                
+                                # Try to get document name from the citation data, fallback to document ID
+                                doc_name = citation.get('document_name', f"Document {citation['document_id']}")
+                                print(f"🔍 Frontend citation: {citation}")
+                                print(f"🔍 Frontend doc_name: {doc_name}")
+                                
+                                with st.expander(f"📄 {doc_name}{page_info}"):
                                     st.write(citation["quote"])
                     
                     # Add assistant message to chat history
@@ -724,12 +737,199 @@ def show_chat_history_page():
                             st.divider()
                             st.write("**Sources:**")
                             for citation in message["citations"]:
-                                with st.expander(f"Source: {citation['source']}, Page: {citation['page']}"):
+                                page_info = f", Page {citation['page_number']}" if citation.get('page_number') else ""
+                                doc_name = citation.get('document_name', f"Document {citation['document_id']}")
+                                with st.expander(f"📄 {doc_name}{page_info}"):
                                     st.write(citation["quote"])
         else:
             st.info("No messages found for this chat session.")
     else:
         st.info("Please select a chat session from the sidebar.")
+
+
+def show_quiz_page():
+    """Show the quiz generation page."""
+    st.title("📝 Quiz Generator")
+    st.write("Generate quizzes based on your uploaded documents!")
+    
+    if not hasattr(st.session_state, "selected_course_id"):
+        st.info("Please select a course from the sidebar first.")
+        return
+    
+    # Show selected course name instead of ID
+    course_name = getattr(st.session_state, 'selected_course_name', 'Unknown Course')
+    st.info(f"Selected course: {course_name}")
+    
+    # Get documents for quiz generation
+    try:
+        response = requests.get(
+            f"{API_URL}/api/quiz/documents/{st.session_state.selected_course_id}",
+            headers={"Authorization": f"Bearer {st.session_state.token['access_token']}"}
+        )
+        
+        if response.status_code == 200:
+            documents = response.json()
+            st.success(f"Found {len(documents)} documents")  # Debug info
+            
+            if not documents:
+                st.info("No processed documents available for quiz generation. Please upload and process documents first.")
+                return
+            
+            # Document selection
+            st.subheader("📄 Select Document")
+            doc_options = {doc["id"]: f"{doc['filename']} ({doc['page_count']} pages)" for doc in documents}
+            selected_doc_id = st.selectbox(
+                "Choose a document to generate quiz from:",
+                options=list(doc_options.keys()),
+                format_func=lambda x: doc_options[x]
+            )
+            
+            # Quiz configuration
+            st.subheader("⚙️ Quiz Settings")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                num_questions = st.slider("Number of questions:", 5, 20, 10)
+            
+            with col2:
+                question_types = st.multiselect(
+                    "Question types:",
+                    ["mcq", "true_false"],
+                    default=["mcq", "true_false"],
+                    format_func=lambda x: "Multiple Choice" if x == "mcq" else "True/False"
+                )
+            
+            if not question_types:
+                st.error("Please select at least one question type.")
+                return
+            
+            # Generate quiz button
+            if st.button("🎯 Generate Quiz", type="primary"):
+                with st.spinner("Generating quiz... This may take a moment."):
+                    quiz_response = requests.post(
+                        f"{API_URL}/api/quiz/generate",
+                        headers={"Authorization": f"Bearer {st.session_state.token['access_token']}"},
+                        json={
+                            "document_id": selected_doc_id,
+                            "num_questions": num_questions,
+                            "question_types": question_types
+                        }
+                    )
+                    
+                    if quiz_response.status_code == 200:
+                        quiz_data = quiz_response.json()
+                        st.session_state.current_quiz = quiz_data
+                        st.session_state.quiz_answers = {}
+                        st.session_state.show_answers = False
+                        st.success(f"Quiz generated successfully! {quiz_data['total_questions']} questions created.")
+                        st.rerun()
+                    else:
+                        st.error(f"Failed to generate quiz: {quiz_response.text}")
+            
+            # Display quiz if generated
+            if hasattr(st.session_state, "current_quiz") and st.session_state.current_quiz:
+                display_quiz()
+                
+        else:
+            st.error(f"Failed to load documents for quiz generation. Status: {response.status_code}")
+            st.error(f"Response: {response.text}")
+            
+    except Exception as e:
+        st.error(f"Error loading quiz page: {e}")
+        import traceback
+        st.error(f"Traceback: {traceback.format_exc()}")
+
+
+def display_quiz():
+    """Display the generated quiz."""
+    quiz = st.session_state.current_quiz
+    
+    st.divider()
+    st.subheader(f"📝 Quiz: {quiz['document_name']}")
+    st.write(f"**Total Questions:** {quiz['total_questions']}")
+    
+    # Initialize answers if not exists
+    if not hasattr(st.session_state, "quiz_answers"):
+        st.session_state.quiz_answers = {}
+    
+    # Display questions
+    for question in quiz["questions"]:
+        st.write(f"**Question {question['id']}:** {question['question']}")
+        
+        if question["type"] == "mcq":
+            # Multiple choice question
+            answer_key = f"mcq_{question['id']}_{hash(str(question['question']))}"  # Unique key
+            selected_option = st.radio(
+                "Select your answer:",
+                options=question["options"],
+                key=answer_key,
+                index=None
+            )
+            
+            if selected_option:
+                # Extract just the letter (A, B, C, D)
+                st.session_state.quiz_answers[question['id']] = selected_option[0]
+        
+        elif question["type"] == "true_false":
+            # True/False question
+            answer_key = f"tf_{question['id']}_{hash(str(question['question']))}"  # Unique key
+            selected_option = st.radio(
+                "Select your answer:",
+                options=["True", "False"],
+                key=answer_key,
+                index=None
+            )
+            
+            if selected_option:
+                st.session_state.quiz_answers[question['id']] = selected_option
+        
+        # Show answer if revealed
+        if hasattr(st.session_state, "show_answers") and st.session_state.show_answers:
+            user_answer = st.session_state.quiz_answers.get(question['id'], "Not answered")
+            correct_answer = question['correct_answer']
+            
+            if user_answer == correct_answer:
+                st.success(f"✅ Correct! Answer: {correct_answer}")
+            else:
+                st.error(f"❌ Incorrect. Your answer: {user_answer}, Correct answer: {correct_answer}")
+            
+            st.info(f"**Explanation:** {question['explanation']}")
+        
+        st.divider()
+    
+    # Quiz controls
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if st.button("🔍 Show Answers"):
+            st.session_state.show_answers = True
+            st.rerun()
+    
+    with col2:
+        if st.button("📊 Calculate Score"):
+            if st.session_state.quiz_answers:
+                correct_count = 0
+                total_questions = len(quiz["questions"])
+                
+                for question in quiz["questions"]:
+                    user_answer = st.session_state.quiz_answers.get(question['id'])
+                    if user_answer == question['correct_answer']:
+                        correct_count += 1
+                
+                score_percentage = (correct_count / total_questions) * 100
+                st.success(f"Your Score: {correct_count}/{total_questions} ({score_percentage:.1f}%)")
+            else:
+                st.warning("Please answer some questions first!")
+    
+    with col3:
+        if st.button("🔄 New Quiz"):
+            if hasattr(st.session_state, "current_quiz"):
+                del st.session_state.current_quiz
+            if hasattr(st.session_state, "quiz_answers"):
+                del st.session_state.quiz_answers
+            if hasattr(st.session_state, "show_answers"):
+                del st.session_state.show_answers
+            st.rerun()
 
 
 if __name__ == "__main__":

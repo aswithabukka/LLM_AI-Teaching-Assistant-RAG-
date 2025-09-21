@@ -2,7 +2,6 @@ from typing import List, Dict, Any, Optional
 import json
 from openai import OpenAI
 from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
 from langchain_openai import ChatOpenAI
 
 from app.config.settings import settings
@@ -142,23 +141,74 @@ ANSWER:"""
                 input_variables=["context", "question", "chat_history"]
             )
             
-            # Create the chain
-            chain = LLMChain(llm=self.llm, prompt=prompt)
+            # Create the chain using the new LangChain syntax
+            chain = prompt | self.llm
             
-            # Run the chain
-            result = chain.run(
-                context=formatted_context,
-                question=question,
-                chat_history=formatted_history
-            )
+            # Run the chain using invoke
+            result = chain.invoke({
+                "context": formatted_context,
+                "question": question,
+                "chat_history": formatted_history
+            })
             
-            print(f"✅ LLM response received: {len(result)} characters")
+            # Extract content from the result (ChatOpenAI returns AIMessage object)
+            answer_text = result.content if hasattr(result, 'content') else str(result)
             
-            # Return simplified response format (no JSON parsing needed)
+            print(f"✅ LLM response received: {len(answer_text)} characters")
+            
+            # Create citations from the context chunks used
+            citations = []
+            from datetime import datetime
+            total_relevance = 0
+            max_possible_score = 0
+            
+            # Only use the first (best) chunk for citation to avoid clutter
+            if context:
+                chunk = context[0]  # Take only the best/first chunk
+                # Normalize relevance score (fallback text search can give high scores like 2.0)
+                raw_score = chunk.get("score", 0.0)
+                # For text search scores > 1.0, normalize to 0-1 range
+                normalized_score = min(raw_score / 5.0, 1.0) if raw_score > 1.0 else raw_score
+                
+                doc_id = chunk.get("document_id", 0)
+                doc_name = chunk.get("document_name", f"Document {doc_id}")
+                print(f"🔍 Using chunk document_name: {doc_name} (ID: {doc_id})")
+                citation = {
+                    "id": 1,  # Only one citation
+                    "message_id": 0,  # Will be set by the calling function if needed
+                    "document_id": doc_id,
+                    "document_name": doc_name,
+                    "page_number": chunk.get("page_number"),
+                    "quote": chunk.get("content", "")[:150] + "..." if len(chunk.get("content", "")) > 150 else chunk.get("content", ""),
+                    "relevance_score": round(normalized_score, 2),
+                    "chunk_id": None,
+                    "created_at": datetime.now()
+                }
+                citations.append(citation)
+                total_relevance = normalized_score
+                max_possible_score = 1.0
+            
+            # Calculate dynamic confidence based on:
+            # 1. Average relevance score of retrieved chunks
+            # 2. Number of chunks found (more chunks = higher confidence)
+            # 3. Quality of the best match
+            if len(context) > 0:
+                avg_relevance = total_relevance / len(context)
+                chunk_count_factor = min(len(context) / 5.0, 1.0)  # Normalize to 0-1
+                best_match_score = max([c.get("score", 0.0) for c in context])
+                best_match_normalized = min(best_match_score / 5.0, 1.0) if best_match_score > 1.0 else best_match_score
+                
+                # Weighted confidence calculation
+                confidence = (avg_relevance * 0.5) + (chunk_count_factor * 0.3) + (best_match_normalized * 0.2)
+                confidence = max(0.1, min(0.95, confidence))  # Keep between 10% and 95%
+            else:
+                confidence = 0.1
+            
+            # Return response with proper citations and dynamic confidence
             return {
-                "answer": result.strip(),
-                "confidence": 0.8,
-                "citations": []
+                "answer": answer_text.strip(),
+                "confidence": round(confidence, 2),
+                "citations": citations
             }
         
         except Exception as e:

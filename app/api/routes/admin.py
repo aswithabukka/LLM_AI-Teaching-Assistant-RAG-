@@ -93,7 +93,7 @@ async def reindex_document(
         )
     
     # Index the new chunks
-    new_vector_ids = rag_pipeline.index_document_chunks(new_chunks, document.id)
+    new_vector_ids = rag_pipeline.index_document_chunks(new_chunks, document.id, document.course_id, document.original_filename)
     
     # Save new chunks to database
     for i, chunk in enumerate(new_chunks):

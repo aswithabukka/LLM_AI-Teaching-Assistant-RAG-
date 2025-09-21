@@ -41,7 +41,9 @@ class RAGPipeline:
     def index_document_chunks(
         self, 
         chunks: List[Dict[str, Any]], 
-        document_id: int
+        document_id: int,
+        course_id: Optional[int] = None,
+        document_name: Optional[str] = None
     ) -> List[str]:
         """
         Index document chunks in the vector database.
@@ -73,10 +75,12 @@ class RAGPipeline:
                 "values": embedding,
                 "metadata": {
                     "document_id": document_id,
+                    "course_id": course_id or 0,
                     "chunk_index": i,
                     "content": chunk["content"],
-                    "page": chunk.get("page", 0),
-                    "source": chunk.get("source", ""),
+                    "page_number": chunk["metadata"].get("page_number") if "metadata" in chunk else chunk.get("page_number", 0),
+                    "source": chunk["metadata"].get("source") if "metadata" in chunk else chunk.get("source", ""),
+                    "document_name": document_name or f"Document {document_id}",
                 }
             })
             
@@ -129,12 +133,15 @@ class RAGPipeline:
                     filter=filter_dict
                 )
                 
-                # Format results from vector store
+                # Format results from vector store - use document_name from metadata
                 for result in results:
+                    metadata = result.get("metadata", {})
                     chunks.append({
-                        "content": result.get("metadata", {}).get("content", ""),
-                        "page_number": result.get("metadata", {}).get("page_number"),
-                        "source": result.get("metadata", {}).get("source", ""),
+                        "content": metadata.get("content", ""),
+                        "page_number": metadata.get("page_number"),
+                        "source": metadata.get("source", ""),
+                        "document_id": metadata.get("document_id"),
+                        "document_name": metadata.get("document_name", f"Document {metadata.get('document_id', 'Unknown')}"),
                         "score": result.get("score", 0.0)
                     })
         except Exception as e:
@@ -158,12 +165,15 @@ class RAGPipeline:
         db = SessionLocal()
         
         try:
-            # Get all document chunks for the course
+            # Get all document chunks for the course with document info
             documents = db.query(Document).filter(Document.course_id == course_id).all()
             document_ids = [doc.id for doc in documents]
             
             if not document_ids:
                 return []
+            
+            # Create document lookup for names
+            doc_lookup = {doc.id: doc.original_filename for doc in documents}
             
             # Get chunks and do simple text matching
             chunks = db.query(DocumentChunk).filter(
@@ -187,7 +197,9 @@ class RAGPipeline:
                     scored_chunks.append({
                         "content": chunk.content,
                         "page_number": chunk.page_number,
-                        "source": f"Document {chunk.document_id}",
+                        "source": doc_lookup.get(chunk.document_id, f"Document {chunk.document_id}"),
+                        "document_id": chunk.document_id,
+                        "document_name": doc_lookup.get(chunk.document_id, f"Document {chunk.document_id}"),
                         "score": score
                     })
             

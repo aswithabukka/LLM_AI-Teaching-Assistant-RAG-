@@ -140,6 +140,7 @@ class ChatMessageResponse(ChatMessageBase):
 
 class CitationBase(BaseModel):
     document_id: int
+    document_name: Optional[str] = None
     page_number: Optional[int] = None
     quote: Optional[str] = None
     relevance_score: Optional[float] = None
