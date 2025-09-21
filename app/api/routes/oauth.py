@@ -26,16 +26,16 @@ async def oauth_login(
     Initiate OAuth login with specified provider.
     
     Args:
-        provider: OAuth provider (google, github, facebook)
+        provider: OAuth provider (google, github)
         redirect_uri: Optional custom redirect URI
         
     Returns:
         Authorization URL for the OAuth provider
     """
-    if provider not in ['google', 'github', 'facebook']:
+    if provider not in ['google', 'github']:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unsupported OAuth provider. Supported: google, github, facebook"
+            detail="Unsupported OAuth provider. Supported: google, github"
         )
     
     # Use default redirect URI if not provided
@@ -69,7 +69,7 @@ async def oauth_callback(
     Handle OAuth callback and create/login user.
     
     Args:
-        provider: OAuth provider (google, github, facebook)
+        provider: OAuth provider (google, github)
         code: Authorization code from OAuth provider
         redirect_uri: Redirect URI used in authorization
         db: Database session
@@ -77,10 +77,10 @@ async def oauth_callback(
     Returns:
         Access token and user information
     """
-    if provider not in ['google', 'github', 'facebook']:
+    if provider not in ['google', 'github']:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unsupported OAuth provider"
+            detail="Unsupported OAuth provider. Supported: google, github"
         )
     
     if not redirect_uri:
@@ -105,8 +105,6 @@ async def oauth_callback(
             user_info = await oauth_service.get_google_user_info(access_token)
         elif provider == 'github':
             user_info = await oauth_service.get_github_user_info(access_token)
-        elif provider == 'facebook':
-            user_info = await oauth_service.get_facebook_user_info(access_token)
         
         # Create or get user
         result = await oauth_service.create_or_get_oauth_user(
@@ -150,13 +148,6 @@ async def get_available_providers() -> Any:
             "color": "#333333"
         })
     
-    if settings.facebook_client_id and settings.facebook_client_secret:
-        providers.append({
-            "name": "facebook",
-            "display_name": "Facebook",
-            "icon": "📘",
-            "color": "#1877f2"
-        })
     
     return {
         "providers": providers,
@@ -181,10 +172,10 @@ async def unlink_oauth_provider(
     Returns:
         Success message
     """
-    if provider not in ['google', 'github', 'facebook']:
+    if provider not in ['google', 'github']:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unsupported OAuth provider"
+            detail="Unsupported OAuth provider. Supported: google, github"
         )
     
     if current_user.oauth_provider != provider:

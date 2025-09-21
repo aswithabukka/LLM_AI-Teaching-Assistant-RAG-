@@ -50,17 +50,6 @@ class OAuthService:
                 client_kwargs={'scope': 'user:email'},
             )
         
-        # Facebook OAuth
-        if settings.facebook_client_id and settings.facebook_client_secret:
-            self.oauth.register(
-                name='facebook',
-                client_id=settings.facebook_client_id,
-                client_secret=settings.facebook_client_secret,
-                access_token_url='https://graph.facebook.com/oauth/access_token',
-                authorize_url='https://www.facebook.com/dialog/oauth',
-                api_base_url='https://graph.facebook.com/',
-                client_kwargs={'scope': 'email'},
-            )
     
     async def get_google_user_info(self, access_token: str) -> Dict[str, Any]:
         """Get user info from Google."""
@@ -110,24 +99,6 @@ class OAuthService:
             
             return user_data
     
-    async def get_facebook_user_info(self, access_token: str) -> Dict[str, Any]:
-        """Get user info from Facebook."""
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                'https://graph.facebook.com/me',
-                params={
-                    'fields': 'id,name,email,picture',
-                    'access_token': access_token
-                }
-            )
-            
-            if response.status_code != 200:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Failed to get user info from Facebook"
-                )
-            
-            return response.json()
     
     async def create_or_get_oauth_user(
         self, 
@@ -150,10 +121,6 @@ class OAuthService:
             email = user_info.get('email')
             name = user_info.get('name') or user_info.get('login')
             provider_id = str(user_info.get('id'))
-        elif provider == 'facebook':
-            email = user_info.get('email')
-            name = user_info.get('name')
-            provider_id = user_info.get('id')
         
         if not email:
             raise HTTPException(
@@ -211,10 +178,10 @@ class OAuthService:
     
     def get_authorization_url(self, provider: str, redirect_uri: str) -> str:
         """Get authorization URL for OAuth provider."""
-        if provider not in ['google', 'github', 'facebook']:
+        if provider not in ['google', 'github']:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Unsupported OAuth provider"
+                detail="Unsupported OAuth provider. Supported: google, github"
             )
         
         client = getattr(self.oauth, provider, None)
@@ -229,8 +196,6 @@ class OAuthService:
             return f"https://accounts.google.com/oauth2/auth?client_id={settings.google_client_id}&redirect_uri={redirect_uri}&scope=openid email profile&response_type=code"
         elif provider == 'github':
             return f"https://github.com/login/oauth/authorize?client_id={settings.github_client_id}&redirect_uri={redirect_uri}&scope=user:email"
-        elif provider == 'facebook':
-            return f"https://www.facebook.com/dialog/oauth?client_id={settings.facebook_client_id}&redirect_uri={redirect_uri}&scope=email"
     
     async def exchange_code_for_token(self, provider: str, code: str, redirect_uri: str) -> str:
         """Exchange authorization code for access token."""
@@ -239,12 +204,10 @@ class OAuthService:
             return await self._exchange_google_code(code, redirect_uri)
         elif provider == 'github':
             return await self._exchange_github_code(code, redirect_uri)
-        elif provider == 'facebook':
-            return await self._exchange_facebook_code(code, redirect_uri)
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Unsupported OAuth provider"
+                detail="Unsupported OAuth provider. Supported: google, github"
             )
     
     async def _exchange_google_code(self, code: str, redirect_uri: str) -> str:
@@ -293,24 +256,3 @@ class OAuthService:
             token_data = response.json()
             return token_data.get('access_token')
     
-    async def _exchange_facebook_code(self, code: str, redirect_uri: str) -> str:
-        """Exchange Facebook authorization code for access token."""
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                'https://graph.facebook.com/oauth/access_token',
-                params={
-                    'client_id': settings.facebook_client_id,
-                    'client_secret': settings.facebook_client_secret,
-                    'code': code,
-                    'redirect_uri': redirect_uri,
-                }
-            )
-            
-            if response.status_code != 200:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Failed to exchange code for token"
-                )
-            
-            token_data = response.json()
-            return token_data.get('access_token')

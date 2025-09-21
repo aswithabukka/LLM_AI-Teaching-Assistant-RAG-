@@ -1,6 +1,6 @@
 # OAuth Setup Guide
 
-This guide will help you set up social login with Google, GitHub, and Facebook.
+This guide will help you set up social login with Google and GitHub.
 
 ## 🔧 Quick Setup Steps
 
@@ -20,10 +20,6 @@ GOOGLE_CLIENT_SECRET=your_actual_google_client_secret
 # GitHub OAuth  
 GITHUB_CLIENT_ID=your_actual_github_client_id
 GITHUB_CLIENT_SECRET=your_actual_github_client_secret
-
-# Facebook OAuth
-FACEBOOK_CLIENT_ID=your_actual_facebook_client_id
-FACEBOOK_CLIENT_SECRET=your_actual_facebook_client_secret
 ```
 
 ## 📋 Provider Setup Instructions
@@ -46,13 +42,6 @@ FACEBOOK_CLIENT_SECRET=your_actual_facebook_client_secret
    - Authorization callback URL: `http://localhost:8501/oauth/callback`
 4. Copy the Client ID and Client Secret to your `.env` file
 
-### 📘 Facebook OAuth Setup
-1. Go to [Facebook Developers](https://developers.facebook.com/)
-2. Click "Create App" → "Consumer" → "Next"
-3. Add "Facebook Login" product
-4. In Facebook Login settings:
-   - Add Valid OAuth Redirect URIs: `http://localhost:8501/oauth/callback`
-5. Copy the App ID and App Secret to your `.env` file
 
 ## 🚀 Testing Your Setup
 

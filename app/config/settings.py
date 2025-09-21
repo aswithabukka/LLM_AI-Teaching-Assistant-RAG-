@@ -61,8 +61,6 @@ class Settings(BaseSettings):
     google_client_secret: Optional[str] = os.getenv("GOOGLE_CLIENT_SECRET")
     github_client_id: Optional[str] = os.getenv("GITHUB_CLIENT_ID")
     github_client_secret: Optional[str] = os.getenv("GITHUB_CLIENT_SECRET")
-    facebook_client_id: Optional[str] = os.getenv("FACEBOOK_CLIENT_ID")
-    facebook_client_secret: Optional[str] = os.getenv("FACEBOOK_CLIENT_SECRET")
     oauth_redirect_uri: str = os.getenv("OAUTH_REDIRECT_URI", "http://localhost:8501/oauth/callback")
     
     class Config:

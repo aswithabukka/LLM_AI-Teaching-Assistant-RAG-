@@ -9,7 +9,7 @@ from typing import Dict, List, Any, Optional
 # Set page configuration
 st.set_page_config(
     page_title="StudyMate AI",
-    page_icon="🤖",
+    page_icon="📚",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -133,12 +133,20 @@ def oauth_login(provider: str):
             st.session_state.oauth_provider = provider
             st.session_state.oauth_redirect_uri = auth_data["redirect_uri"]
             
-            # Show instructions to user
-            st.info(f"🔗 Click the link below to login with {provider.title()}:")
-            st.markdown(f"[Login with {provider.title()}]({auth_url})")
+            # Use Streamlit's redirect functionality
+            st.success(f"🔗 Redirecting to {provider.title()} for authentication...")
+            st.info("💡 **Note:** You'll be redirected to complete the login process.")
             
-            # Alternative: Auto-redirect (but Streamlit doesn't support this directly)
-            st.write("💡 **Note:** After logging in, you'll be redirected back to this application.")
+            # Use JavaScript for immediate redirect
+            st.markdown(f"""
+            <meta http-equiv="refresh" content="0; url={auth_url}">
+            <script>
+                window.location.href = '{auth_url}';
+            </script>
+            """, unsafe_allow_html=True)
+            
+            # Also provide manual link as backup
+            st.markdown(f"**[Click here if not redirected automatically]({auth_url})**")
             
         else:
             st.error(f"Failed to initiate {provider} login: {response.text}")
@@ -601,9 +609,34 @@ def main():
 
 def show_login_page():
     """Show the login page."""
-    st.title("🤖 StudyMate AI")
+    # Add some top spacing
+    st.markdown("<div style='margin-top: 50px;'></div>", unsafe_allow_html=True)
     
-    # Create tabs for login and registration
+    # Create a centered container
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        # Main title
+        st.markdown("""
+        <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #2E86AB; margin-bottom: 10px; font-size: 32px;">
+                📚 StudyMate AI
+            </h1>
+            <p style="color: #666; font-size: 16px; margin: 0;">
+                Your AI-Powered Learning Assistant
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Login/Register toggle
+        st.markdown("""
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h2 style="color: #333; font-size: 24px; margin: 0;">
+                Log in or sign up
+            </h2>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Create tabs for login and registration with custom styling
     tab1, tab2 = st.tabs(["Login", "Register"])
     
     with tab1:
@@ -647,43 +680,29 @@ def show_login_page():
                     else:
                         st.error("❌ Invalid email or password. Please check your credentials and try again.")
         
-        # OAuth login options
-        st.divider()
-        st.write("**Or login with:**")
+        # OAuth login options with modern styling
+        st.markdown("<div style='text-align: center; margin: 20px 0;'><span style='color: #666; font-size: 14px;'>OR</span></div>", unsafe_allow_html=True)
         
         # Get available OAuth providers
         oauth_providers = get_oauth_providers()
         
         if oauth_providers:
-            # Create columns for OAuth buttons
-            cols = st.columns(len(oauth_providers))
-            
-            for i, provider in enumerate(oauth_providers):
-                with cols[i]:
-                    if st.button(
-                        f"{provider['icon']} {provider['display_name']}", 
-                        key=f"oauth_login_{provider['name']}",
-                        use_container_width=True
-                    ):
-                        # Initiate OAuth login
-                        oauth_login(provider['name'])
+            for provider in oauth_providers:
+                if provider['name'] == 'google':
+                    if st.button("🔍 Continue with Google", key="oauth_google", use_container_width=True, type="secondary"):
+                        oauth_login('google')
+                elif provider['name'] == 'github':
+                    if st.button("🐙 Continue with GitHub", key="oauth_github", use_container_width=True, type="secondary"):
+                        oauth_login('github')
         else:
-            st.info("💡 To enable social login, add your OAuth credentials to the .env file:")
-            st.code("""
-# Add these to your .env file:
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-
-GITHUB_CLIENT_ID=your_github_client_id  
-GITHUB_CLIENT_SECRET=your_github_client_secret
-
-FACEBOOK_CLIENT_ID=your_facebook_client_id
-FACEBOOK_CLIENT_SECRET=your_facebook_client_secret
-            """)
-            st.write("📖 **Setup guides:**")
-            st.write("- [Google OAuth Setup](https://console.cloud.google.com/)")
-            st.write("- [GitHub OAuth Setup](https://github.com/settings/developers)")
-            st.write("- [Facebook OAuth Setup](https://developers.facebook.com/)")
+            # Show OAuth buttons as enabled for demo purposes
+            if st.button("🔍 Continue with Google", key="demo_google", use_container_width=True, type="secondary"):
+                st.info("🔍 Google OAuth not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to your .env file.")
+            
+            if st.button("🐙 Continue with GitHub", key="demo_github", use_container_width=True, type="secondary"):
+                st.info("🐙 GitHub OAuth not configured. Add GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET to your .env file.")
+            
+            st.caption("💡 Add OAuth credentials to .env file to enable social login")
     
     with tab2:
         st.header("Register")
@@ -781,33 +800,49 @@ FACEBOOK_CLIENT_SECRET=your_facebook_client_secret
                     else:
                         st.error("Registration failed. Please try again.")
         
-        # OAuth registration options
-        st.divider()
-        st.write("**Or register with:**")
+        # OAuth registration options with modern styling
+        st.markdown("<div style='text-align: center; margin: 20px 0;'><span style='color: #666; font-size: 14px;'>OR</span></div>", unsafe_allow_html=True)
         
         # Get available OAuth providers
         oauth_providers = get_oauth_providers()
         
         if oauth_providers:
-            # Create columns for OAuth buttons
-            cols = st.columns(len(oauth_providers))
-            
-            for i, provider in enumerate(oauth_providers):
-                with cols[i]:
-                    if st.button(
-                        f"{provider['icon']} {provider['display_name']}", 
-                        key=f"oauth_register_{provider['name']}",
-                        use_container_width=True
-                    ):
-                        # Initiate OAuth registration (same as login)
-                        oauth_login(provider['name'])
+            for provider in oauth_providers:
+                if provider['name'] == 'google':
+                    if st.button("🔍 Continue with Google", key="oauth_register_google", use_container_width=True, type="secondary"):
+                        oauth_login('google')
+                elif provider['name'] == 'github':
+                    if st.button("🐙 Continue with GitHub", key="oauth_register_github", use_container_width=True, type="secondary"):
+                        oauth_login('github')
         else:
-            st.info("💡 OAuth providers not configured.")
+            # Show disabled OAuth buttons with proper styling
+            st.markdown("""
+            <div class="oauth-button">
+                <span class="oauth-icon">🔍</span>
+                Continue with Google
+            </div>
+            <div class="oauth-button">
+                <span class="oauth-icon">🐙</span>
+                Continue with GitHub
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.caption("💡 Add OAuth credentials to .env file to enable social login")
 
 
 def show_main_app(user_info):
     """Show the main application interface."""
-    st.sidebar.title("🤖 StudyMate AI")
+    # Enhanced sidebar header
+    st.sidebar.markdown("""
+    <div style="text-align: center; padding: 10px;">
+        <h2 style="color: #2E86AB; margin: 0;">
+            📚 StudyMate AI
+        </h2>
+        <p style="color: #666; font-size: 12px; margin: 5px 0;">
+            AI Learning Assistant
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Navigation
     page = st.sidebar.radio(
