@@ -17,6 +17,9 @@ class User(Base):
     hashed_password = Column(String)
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)
+    full_name = Column(String, nullable=True)
+    oauth_provider = Column(String, nullable=True)  # 'google', 'github', 'facebook'
+    oauth_id = Column(String, nullable=True)  # Provider-specific user ID
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

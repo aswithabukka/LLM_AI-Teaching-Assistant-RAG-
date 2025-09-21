@@ -35,7 +35,7 @@ async def root():
     """
     Root endpoint.
     """
-    return {"message": "Welcome to Course Notes Q&A API"}
+    return {"message": "Welcome to StudyMate AI API"}
 
 
 @app.get("/health")

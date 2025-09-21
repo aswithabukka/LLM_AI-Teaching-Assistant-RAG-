@@ -30,7 +30,7 @@ def start_frontend():
 def main():
     try:
         print("="*70)
-        print("           COURSE NOTES Q&A APPLICATION LAUNCHER")
+        print("              🤖 STUDYMATE AI LAUNCHER")
         print("="*70)
         
         # Start backend

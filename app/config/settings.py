@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     database_url: str = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR}/data/app.db")
     
     # Application Settings
-    app_name: str = os.getenv("APP_NAME", "Course Notes Q&A")
+    app_name: str = os.getenv("APP_NAME", "StudyMate AI")
     debug: bool = os.getenv("DEBUG", "True").lower() == "true"
     secret_key: str = os.getenv("SECRET_KEY", "supersecretkey")
     algorithm: str = os.getenv("ALGORITHM", "HS256")
@@ -55,6 +55,15 @@ class Settings(BaseSettings):
     chunk_size: int = int(os.getenv("CHUNK_SIZE", "1000"))
     chunk_overlap: int = int(os.getenv("CHUNK_OVERLAP", "200"))
     top_k_retrieval: int = int(os.getenv("TOP_K_RETRIEVAL", "5"))
+    
+    # OAuth Settings
+    google_client_id: Optional[str] = os.getenv("GOOGLE_CLIENT_ID")
+    google_client_secret: Optional[str] = os.getenv("GOOGLE_CLIENT_SECRET")
+    github_client_id: Optional[str] = os.getenv("GITHUB_CLIENT_ID")
+    github_client_secret: Optional[str] = os.getenv("GITHUB_CLIENT_SECRET")
+    facebook_client_id: Optional[str] = os.getenv("FACEBOOK_CLIENT_ID")
+    facebook_client_secret: Optional[str] = os.getenv("FACEBOOK_CLIENT_SECRET")
+    oauth_redirect_uri: str = os.getenv("OAUTH_REDIRECT_URI", "http://localhost:8501/oauth/callback")
     
     class Config:
         env_file = ".env"

@@ -1,4 +1,4 @@
-# Course Notes Q&A - AI Teaching Assistant with RAG
+# 🤖 StudyMate AI - AI Teaching Assistant with RAG
 
 A comprehensive web application that allows users to upload course notes (PDFs, slides, documents), ask questions about them, and generate interactive quizzes. The application uses Retrieval-Augmented Generation (RAG) to provide accurate answers with citations to the source material, and leverages LLM technology to create educational quizzes based on document content.
 

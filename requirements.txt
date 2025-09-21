@@ -24,6 +24,8 @@ sqlalchemy>=2.0.0
 # Authentication
 python-jose>=3.3.0
 passlib>=1.7.4
+authlib>=1.2.1
+httpx>=0.24.0
 
 # Utilities
 python-dotenv>=1.0.0

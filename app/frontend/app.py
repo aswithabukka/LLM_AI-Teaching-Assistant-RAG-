@@ -8,8 +8,8 @@ from typing import Dict, List, Any, Optional
 
 # Set page configuration
 st.set_page_config(
-    page_title="Course Notes Q&A",
-    page_icon="📚",
+    page_title="StudyMate AI",
+    page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -104,6 +104,83 @@ def get_strength_color(level: str) -> str:
         "Very Strong": "#00cc44"
     }
     return colors.get(level, "#cccccc")
+
+
+# OAuth functions
+def get_oauth_providers() -> List[Dict[str, Any]]:
+    """Get available OAuth providers from backend."""
+    try:
+        response = requests.get(f"{API_URL}/api/oauth/providers")
+        if response.status_code == 200:
+            return response.json().get("providers", [])
+        return []
+    except Exception as e:
+        print(f"Error getting OAuth providers: {e}")
+        return []
+
+
+def oauth_login(provider: str):
+    """Initiate OAuth login flow."""
+    try:
+        # Get authorization URL from backend
+        response = requests.get(f"{API_URL}/api/oauth/auth/{provider}")
+        
+        if response.status_code == 200:
+            auth_data = response.json()
+            auth_url = auth_data["authorization_url"]
+            
+            # Store provider info in session state for callback handling
+            st.session_state.oauth_provider = provider
+            st.session_state.oauth_redirect_uri = auth_data["redirect_uri"]
+            
+            # Show instructions to user
+            st.info(f"🔗 Click the link below to login with {provider.title()}:")
+            st.markdown(f"[Login with {provider.title()}]({auth_url})")
+            
+            # Alternative: Auto-redirect (but Streamlit doesn't support this directly)
+            st.write("💡 **Note:** After logging in, you'll be redirected back to this application.")
+            
+        else:
+            st.error(f"Failed to initiate {provider} login: {response.text}")
+            
+    except Exception as e:
+        st.error(f"Error initiating OAuth login: {e}")
+
+
+def handle_oauth_callback(provider: str, code: str):
+    """Handle OAuth callback and login user."""
+    try:
+        # Exchange code for token
+        response = requests.get(
+            f"{API_URL}/api/oauth/callback/{provider}",
+            params={"code": code}
+        )
+        
+        if response.status_code == 200:
+            token_data = response.json()
+            
+            # Store token in session
+            st.session_state.token = {
+                "access_token": token_data["access_token"],
+                "token_type": token_data["token_type"]
+            }
+            
+            # Clear OAuth session data
+            if hasattr(st.session_state, "oauth_provider"):
+                del st.session_state.oauth_provider
+            if hasattr(st.session_state, "oauth_redirect_uri"):
+                del st.session_state.oauth_redirect_uri
+            
+            st.success(f"✅ Successfully logged in with {provider.title()}!")
+            st.rerun()
+            
+        else:
+            st.error(f"OAuth login failed: {response.text}")
+            
+    except Exception as e:
+        st.error(f"Error handling OAuth callback: {e}")
+
+
 
 
 # Authentication functions
@@ -495,6 +572,19 @@ def get_chat_messages(token: str, chat_session_id: int) -> List[Dict[str, Any]]:
 
 # Main app
 def main():
+    # Check for OAuth callback parameters in URL
+    query_params = st.query_params
+    
+    if "code" in query_params and hasattr(st.session_state, "oauth_provider"):
+        # Handle OAuth callback
+        code = query_params["code"]
+        provider = st.session_state.oauth_provider
+        
+        st.info(f"Processing {provider.title()} login...")
+        handle_oauth_callback(provider, code)
+        return
+    
+    
     # Check if user is logged in
     if "token" not in st.session_state:
         show_login_page()
@@ -511,7 +601,7 @@ def main():
 
 def show_login_page():
     """Show the login page."""
-    st.title("Course Notes Q&A")
+    st.title("🤖 StudyMate AI")
     
     # Create tabs for login and registration
     tab1, tab2 = st.tabs(["Login", "Register"])
@@ -556,6 +646,44 @@ def show_login_page():
                         st.rerun()
                     else:
                         st.error("❌ Invalid email or password. Please check your credentials and try again.")
+        
+        # OAuth login options
+        st.divider()
+        st.write("**Or login with:**")
+        
+        # Get available OAuth providers
+        oauth_providers = get_oauth_providers()
+        
+        if oauth_providers:
+            # Create columns for OAuth buttons
+            cols = st.columns(len(oauth_providers))
+            
+            for i, provider in enumerate(oauth_providers):
+                with cols[i]:
+                    if st.button(
+                        f"{provider['icon']} {provider['display_name']}", 
+                        key=f"oauth_login_{provider['name']}",
+                        use_container_width=True
+                    ):
+                        # Initiate OAuth login
+                        oauth_login(provider['name'])
+        else:
+            st.info("💡 To enable social login, add your OAuth credentials to the .env file:")
+            st.code("""
+# Add these to your .env file:
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+
+GITHUB_CLIENT_ID=your_github_client_id  
+GITHUB_CLIENT_SECRET=your_github_client_secret
+
+FACEBOOK_CLIENT_ID=your_facebook_client_id
+FACEBOOK_CLIENT_SECRET=your_facebook_client_secret
+            """)
+            st.write("📖 **Setup guides:**")
+            st.write("- [Google OAuth Setup](https://console.cloud.google.com/)")
+            st.write("- [GitHub OAuth Setup](https://github.com/settings/developers)")
+            st.write("- [Facebook OAuth Setup](https://developers.facebook.com/)")
     
     with tab2:
         st.header("Register")
@@ -652,11 +780,34 @@ def show_login_page():
                         st.session_state.register_confirm_password = ""
                     else:
                         st.error("Registration failed. Please try again.")
+        
+        # OAuth registration options
+        st.divider()
+        st.write("**Or register with:**")
+        
+        # Get available OAuth providers
+        oauth_providers = get_oauth_providers()
+        
+        if oauth_providers:
+            # Create columns for OAuth buttons
+            cols = st.columns(len(oauth_providers))
+            
+            for i, provider in enumerate(oauth_providers):
+                with cols[i]:
+                    if st.button(
+                        f"{provider['icon']} {provider['display_name']}", 
+                        key=f"oauth_register_{provider['name']}",
+                        use_container_width=True
+                    ):
+                        # Initiate OAuth registration (same as login)
+                        oauth_login(provider['name'])
+        else:
+            st.info("💡 OAuth providers not configured.")
 
 
 def show_main_app(user_info):
     """Show the main application interface."""
-    st.sidebar.title("Navigation")
+    st.sidebar.title("🤖 StudyMate AI")
     
     # Navigation
     page = st.sidebar.radio(
